@@ -1,0 +1,40 @@
+{
+  "name": "ArtsBuzzV2",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node node_modules/react-native/local-cli/cli.js start"
+  },
+  "dependencies": {
+    "@remobile/react-native-splashscreen": "^1.0.3",
+    "async": "^2.0.0-rc.3",
+    "immutable": "^3.8.1",
+    "lodash": "^4.11.1",
+    "moment": "^2.13.0",
+    "react": "^0.14.8",
+    "react-native": "^0.23.1",
+    "react-native-bluetooth-state": "^2.0.0",
+    "react-native-button": "^1.2.1",
+    "react-native-device-info": "^0.9.3",
+    "react-native-drawer": "^1.16.7",
+    "react-native-file-download": "0.0.8",
+    "react-native-fs": "^1.4.0",
+    "react-native-gifted-listview": "0.0.14",
+    "react-native-grid-view": "^0.3.7",
+    "react-native-ibeacon": "^0.5.0",
+    "react-native-modalbox": "^1.3.0",
+    "react-native-overlay": "^0.4.2",
+    "react-native-radio-buttons": "^0.9.1",
+    "react-native-router-flux": "^3.2.8",
+    "react-native-sound": "^0.8.1",
+    "react-native-swipeout": "^2.0.12",
+    "react-native-swiper": "^1.4.3",
+    "react-native-vector-icons": "^2.0.1",
+    "react-timer-mixin": "^0.13.3",
+    "realm": "^0.11.1",
+    "request": "^2.72.0"
+  },
+  "devDependencies": {
+    "react-event-emitter-mixin": "0.0.3"
+  }
+}
