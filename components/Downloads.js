@@ -23,6 +23,7 @@ const TimerMixin = require('react-timer-mixin');
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RealmRepo = require("./RealmRepo.js");
 var Swipeout = require('react-native-swipeout');
+var ProgressBar = require('react-native-progress-bar');
 
 var opExTag = "";
 
@@ -82,7 +83,15 @@ var Downloads = React.createClass({
             this.refs.modalDown.open();
             this.setTimeout(()=> {
                 RealmRepo.updateExContent(rowData.extag, ()=> {
-                    this.refs.modalDown.close();
+                    if(this.refs.progressBar) {
+                        this.refs.progressBar._finished();
+                        setTimeout((function () {
+                            this.refs.modalDown.close();
+                        }).bind(this), 500);
+                    }
+                    else {
+                        this.refs.modalDown.close();
+                    }
                     this.refs.lv._refresh();
                     this.eventEmitter('emit', 'downloadChanged');
                 });
@@ -348,9 +357,37 @@ var Downloads = React.createClass({
                         size="large"
                         color="#aa3300"
                         />
+                    <ProgressBarIndicator ref={"progressBar"}/>
                     <Text style={modelStyle.text}>{RealmRepo.getLocaleValue('msg_file_downloading')}</Text>
                 </Modal>
             </View>
+        );
+    }
+});
+
+var ProgressBarIndicator = React.createClass({
+    _finished(){
+        this.setState({progress: 1})
+    },
+    getInitialState(){
+        return {
+            progress: 0.2
+        }
+    },
+    render(){
+        setTimeout((function () {
+            if (this.state.progress < 1) {
+                this.setState({progress: this.state.progress + (0.4 * Math.random())});
+            }
+        }).bind(this), 100);
+        return (
+            <ProgressBar
+                ref={"pb"}
+                fillStyle={{}}
+                backgroundStyle={{backgroundColor: '#cccccc', borderRadius: 2}}
+                style={{marginTop: 10, width: 150}}
+                progress={this.state.progress}
+                />
         );
     }
 });

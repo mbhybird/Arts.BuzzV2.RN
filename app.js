@@ -16,6 +16,7 @@ const TimerMixin = require('react-timer-mixin');
 var Sound = require('react-native-sound');
 const RNS = NativeModules.RNSound;
 const RealmRepo = require("./components/RealmRepo.js");
+const History  = require("./components/History.js");
 var _ = require('lodash');
 
 class TabIcon extends React.Component {
@@ -139,6 +140,10 @@ var App = React.createClass({
             SplashScreen.hide();
         },1000);
 
+        this.eventEmitter('on', 'drawerOpenState', (threshold)=> {
+            canReceiveSignal = !threshold;
+        });
+
         // Listen for beacon changes
         var subscription = DeviceEventEmitter.addListener(
             'beaconsDidRange',
@@ -153,9 +158,10 @@ var App = React.createClass({
 
                     //active
                     if (AppState.currentState === 'active') {
-                        if(canReceiveSignal) {
+                        if (canReceiveSignal) {
                             this.eventEmitter('emit', 'beaconCountChanged', orderList);
                         }
+                        this.eventEmitter('emit', 'signalReceive', orderList.length > 0);
                     } else {
                         //background
                         var title = null;
@@ -222,14 +228,17 @@ var App = React.createClass({
                             if (headState.state == 1) {
                                 //init
                                 if (lastBeaconId == "") {
-                                    modalState = true;
-                                    if(user) {
-                                        RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
+                                    if (History.lastPlayBeaconId != headState.beaconId) {
+                                        modalState = true;
+                                        if (user) {
+                                            RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
+                                        }
+                                        console.log('open', headState.beaconId);
+                                        this._sendNotification(title);
+                                        this.playSound();
+                                        lastBeaconId = headState.beaconId;
+                                        History.lastPlayBeaconId = lastBeaconId;
                                     }
-                                    console.log('open', headState.beaconId);
-                                    this._sendNotification(title);
-                                    this.playSound();
-                                    lastBeaconId = headState.beaconId;
                                 }
                                 else {
                                     if (headState.beaconId != lastBeaconId) {
@@ -237,23 +246,26 @@ var App = React.createClass({
                                         //close first
                                         modalState = false;
                                         if(user) {
-                                            RealmRepo.addLog(user.userId, headState.beaconId, '1', headState.extag, ()=> {});
+                                            RealmRepo.addLog(user.userId, lastBeaconId, '1', headState.extag, ()=> {});
                                         }
                                         console.log('close', lastBeaconId);
                                         this.stopSound();
                                         lastBeaconId = "";
 
-                                        this.setTimeout(()=> {
-                                            //then open
-                                            modalState = true;
-                                            if(user) {
-                                                RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
-                                            }
-                                            console.log('open', headState.beaconId);
-                                            this._sendNotification(title);
-                                            this.playSound();
-                                            lastBeaconId = headState.beaconId;
-                                        }, 100);
+                                        if (History.lastPlayBeaconId != headState.beaconId) {
+                                            this.setTimeout(()=> {
+                                                //then open
+                                                modalState = true;
+                                                if (user) {
+                                                    RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
+                                                }
+                                                console.log('open', headState.beaconId);
+                                                this._sendNotification(title);
+                                                this.playSound();
+                                                lastBeaconId = headState.beaconId;
+                                                History.lastPlayBeaconId = lastBeaconId;
+                                            }, 100);
+                                        }
                                     }
                                     else {
                                         //the same beacon then keep the state(do nothing)

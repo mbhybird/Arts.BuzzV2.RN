@@ -25,6 +25,8 @@ var NavigationDrawerForBall = React.createClass({
                 openDrawerOffset={0.2}
                 panCloseMask={0.2}
                 negotiatePan={true}
+                onOpen={()=>this.eventEmitter('emit','drawerOpenState',true)}
+                onClose={()=>this.eventEmitter('emit','drawerOpenState',false)}
                 tweenHandler={(ratio) => ({
                  main: { opacity:Math.max(0.54,1-ratio) }
             })}>

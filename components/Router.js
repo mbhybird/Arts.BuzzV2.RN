@@ -4,8 +4,10 @@ import Button from "react-native-button";
 import Spinner from "react-native-gifted-spinner";
 const RealmRepo = require("./RealmRepo.js");
 import BluetoothState from 'react-native-bluetooth-state'
+const EventEmitterMixin = require('react-event-emitter-mixin');
 
 var Router = React.createClass({
+    mixins:[EventEmitterMixin],
     componentWillMount(){
         RealmRepo.initResources();
         RealmRepo.checkDataVersionUpdate();
@@ -26,6 +28,7 @@ var Router = React.createClass({
         BluetoothState.subscribe(bluetoothState => {
             //bluetoothState can either be "on", "off", "unknown", "unauthorized", "resetting" or "unsupported‚"
             if (bluetoothState !== "on") {
+                this.eventEmitter('emit', 'signalReceive', false);
                 Alert.alert(
                     RealmRepo.getLocaleValue('msg_dlg_title_tips'),
                     RealmRepo.getLocaleValue('msg_bt_is_not_ready'),

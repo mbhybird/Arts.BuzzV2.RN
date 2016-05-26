@@ -17,6 +17,7 @@ var {
 
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RealmRepo = require("./RealmRepo.js");
+const History =  require("./History");
 const RNFS = require('react-native-fs');
 import Icon from 'react-native-vector-icons/FontAwesome';
 const TimerMixin = require('react-timer-mixin');
@@ -204,13 +205,16 @@ var BeaconList = React.createClass({
                 if (headState.state == 1) {
                     //init
                     if (lastBeaconId == "") {
-                        modalState = true;
-                        Actions.detail({...openHeadState});
-                        if(user) {
-                            RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
+                        if (History.lastPlayBeaconId != headState.beaconId) {
+                            modalState = true;
+                            Actions.detail({...openHeadState});
+                            if (user) {
+                                RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
+                            }
+                            console.log('open', headState.beaconId);
+                            lastBeaconId = headState.beaconId;
+                            History.lastPlayBeaconId = lastBeaconId;
                         }
-                        console.log('open', headState.beaconId);
-                        lastBeaconId = headState.beaconId;
                     }
                     else {
                         if (headState.beaconId != lastBeaconId) {
@@ -219,21 +223,24 @@ var BeaconList = React.createClass({
                             modalState = false;
                             this.eventEmitter('emit', 'detailClose');
                             if(user) {
-                                RealmRepo.addLog(user.userId, headState.beaconId, '1', headState.extag, ()=> {});
+                                RealmRepo.addLog(user.userId, lastBeaconId, '1', headState.extag, ()=> {});
                             }
                             console.log('close', lastBeaconId);
                             lastBeaconId = "";
 
-                            this.setTimeout(()=> {
-                                //then open
-                                modalState = true;
-                                Actions.detail({...openHeadState});
-                                if(user) {
-                                    RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
-                                }
-                                console.log('open', headState.beaconId);
-                                lastBeaconId = headState.beaconId;
-                            }, 100);
+                            if (History.lastPlayBeaconId != headState.beaconId) {
+                                this.setTimeout(()=> {
+                                    //then open
+                                    modalState = true;
+                                    Actions.detail({...openHeadState});
+                                    if (user) {
+                                        RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
+                                    }
+                                    console.log('open', headState.beaconId);
+                                    lastBeaconId = headState.beaconId;
+                                }, 100);
+                                History.lastPlayBeaconId = lastBeaconId;
+                            }
                         }
                         else {
                             //the same beacon then keep the state(do nothing)

@@ -5,6 +5,7 @@ const EventEmitterMixin = require('react-event-emitter-mixin');
 var Modal = require('react-native-modalbox');
 const RealmRepo = require("./RealmRepo.js");
 import CatalogItems from "./CatalogItems"
+var ProgressBar = require('react-native-progress-bar');
 
 const styles = StyleSheet.create({
     container: {
@@ -84,7 +85,15 @@ var ModalIndicator = React.createClass({
         });
 
         this.eventEmitter('on', 'downloadChanged', ()=> {
-            this.refs.modalDown.close();
+            if(this.refs.progressBar) {
+                this.refs.progressBar._finished();
+                setTimeout((function () {
+                    this.refs.modalDown.close();
+                }).bind(this), 500);
+            }
+            else {
+                this.refs.modalDown.close();
+            }
         });
 
         this.eventEmitter('on', 'localeChanged', (source)=> {
@@ -105,6 +114,7 @@ var ModalIndicator = React.createClass({
                     size="large"
                     color="#aa3300"
                     />
+                <ProgressBarIndicator ref={"progressBar"}/>
                 <Text style={modelStyle.text}>{RealmRepo.getLocaleValue('msg_file_downloading')}</Text>
             </Modal>
         );
@@ -116,13 +126,20 @@ var ToolBar = React.createClass({
     getInitialState(){
         return {
             opacity: 0,
-            exTag: ""
+            exTag: "",
+            signalReceive: false
         };
     },
     componentDidMount(){
         this.eventEmitter('on', 'iconShow', (params)=> {
             this.setState({opacity: params.opacity});
             this.setState({exTag: params.exTag});
+        });
+
+        this.eventEmitter('on', 'signalReceive', (value)=> {
+            this.setState({
+                signalReceive: value
+            });
         });
     },
    render(){
@@ -132,10 +149,13 @@ var ToolBar = React.createClass({
                    <Image source={{uri:"more"}}
                           style={{width: 50, height: 50}}/>
                </Button>
-               <Button onPress={Actions.ball}>
-                   <Image source={{uri:"go_w"}}
-                          style={{width: 50, height: 50}}/>
-               </Button>
+               { this.state.signalReceive ?
+                   (<Button onPress={Actions.ball}>
+                       <Image source={{uri:"go_w"}}
+                              style={{width: 50, height: 50}}/>
+                   </Button>) :
+                   null
+               }
                {/*
                <Button onPress={()=>{
                 RealmRepo.deleteFavorites();
@@ -159,6 +179,33 @@ var ToolBar = React.createClass({
            </View>
        );
    }
+});
+
+var ProgressBarIndicator = React.createClass({
+    _finished(){
+        this.setState({progress: 1})
+    },
+    getInitialState(){
+        return {
+            progress: 0.2
+        }
+    },
+    render(){
+        setTimeout((function () {
+            if (this.state.progress < 1) {
+                this.setState({progress: this.state.progress + (0.4 * Math.random())});
+            }
+        }).bind(this), 100);
+        return (
+            <ProgressBar
+                ref={"pb"}
+                fillStyle={{}}
+                backgroundStyle={{backgroundColor: '#cccccc', borderRadius: 2}}
+                style={{marginTop: 10, width: 150}}
+                progress={this.state.progress}
+                />
+        );
+    }
 });
 
 module.exports = Catalog;
