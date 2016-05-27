@@ -52,7 +52,7 @@ var Downloads = React.createClass({
         var rows = {};
         rows['header'] = [];
         let catalog = RealmRepo.getCatalog();
-        if (catalog != null) {
+        if (catalog) {
             catalog.forEach((item)=> {
                 let fileCount = item.fileCount;
                 let contentCount = item.exContent == null
@@ -62,7 +62,7 @@ var Downloads = React.createClass({
                     extag: item.extag,
                     title: item.exMaster['title_' + RealmRepo.Locale().displayLang],
                     fileCount: fileCount,
-                    finished: (fileCount == contentCount)
+                    finished: (fileCount == contentCount) && (item.localVersion == item.serverVersion)
                 });
             });
         }

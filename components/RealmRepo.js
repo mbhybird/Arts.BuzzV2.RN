@@ -9,6 +9,7 @@ var moment = require('moment');
 const Realm = require('realm');
 const FileMgr = require("./FileMgr.js");
 const RNFS = require('react-native-fs');
+var _ = require('lodash');
 
 class Favorites{};
 Favorites.schema = {
@@ -147,7 +148,9 @@ Catalog.schema = {
         extag: {type: 'string'},
         fileCount: {type: 'int'},
         exMaster: {type: 'ExMaster'},
-        exContent: {type: 'ExContent'}
+        exContent: {type: 'ExContent'},
+        localVersion: {type: 'string'},
+        serverVersion: {type: 'string'}
     }
 };
 
@@ -648,6 +651,7 @@ module.exports = ({
                         }
                     }
 
+                    catalog[0].localVersion = catalog[0].serverVersion;
                     catalog[0].exContent = {
                         extag: extag,
                         beacons: beacons,
@@ -699,36 +703,88 @@ module.exports = ({
                     //update download
                     fetchData(API.GET_CATALOG_URL, function (json, newVersion) {
                         realm.write(() => {
-                            //remove all catalog table then insert
-                            realm.delete(realm.objects('Catalog'));
-                            realm.delete(realm.objects('ExMaster'));
-                            realm.delete(realm.objects('ExContent'));
-                            realm.delete(realm.objects('Beacon'));
-                            realm.delete(realm.objects('TriggerContent'));
-                            realm.delete(realm.objects('Trigger'));
-                            realm.delete(realm.objects('Content'));
-
                             download[0].dataVersion = newVersion;
                             download[0].appVersion = (parseInt(download[0].appVersion) + 1).toString();
 
+                            var localCatalog = [];
+                            var serverCatalog = [];
+
+                            let localCatalogList = realm.objects('Catalog');
+                            if (localCatalogList.length > 0) {
+                                for (var localCat of localCatalogList) {
+                                    localCatalog.push(localCat.extag);
+                                }
+                            }
+
+                            for (var serverCat of json) {
+                                serverCatalog.push(serverCat.extag);
+                            }
+
+                            let differentCatalog = _.xor(localCatalog, serverCatalog);//比较目录差异
+                            for(var diffExTag of differentCatalog) {
+                                let diffCatalog = realm.objects('Catalog').filtered('extag="' + diffExTag + '"');
+                                if (diffCatalog.length > 0) {
+                                    //本地目录存在并在差异列表里面则删除
+                                    realm.delete(diffCatalog);
+                                    realm.delete(realm.objects('ExMaster').filtered('extag="' + diffExTag + '"'));
+                                    realm.delete(realm.objects('ExContent').filtered('extag="' + diffExTag + '"'));
+                                    realm.delete(realm.objects('Beacon').filtered('extag="' + diffExTag + '"'));
+                                    realm.delete(realm.objects('TriggerContent').filtered('extag="' + diffExTag + '"'));
+                                    realm.delete(realm.objects('Trigger').filtered('extag="' + diffExTag + '"'));
+                                    realm.delete(realm.objects('Content').filtered('extag="' + diffExTag + '"'));
+                                    realm.delete(realm.objects('Favorites').filtered('extag="' + diffExTag + '"'));
+                                }
+                            }
+
                             for (var item of json) {
-                                let fileCount = item.fileCount;
-                                delete item.fileCount;
-                                item.content.usage = "0";
-                                item.content.extag = item.extag;
+                                let catalog = realm.objects('Catalog').filtered('extag="' + item.extag + '"');
+                                //如果本地目录不存在则新增
+                                if (catalog.length == 0) {
+                                    let fileCount = item.fileCount;
+                                    delete item.fileCount;
+                                    item.content.usage = "0";
+                                    item.content.extag = item.extag;
 
-                                FileMgr.downloadFile(
-                                    item.content.serverpath,
-                                    item.content.clientpath,
-                                    item.content.filename
-                                );
+                                    FileMgr.downloadFile(
+                                        item.content.serverpath,
+                                        item.content.clientpath,
+                                        item.content.filename
+                                    );
 
-                                download[0].catalog.push({
-                                    extag: item.extag,
-                                    fileCount: fileCount,
-                                    exMaster: item,
-                                    exContent: null
-                                });
+                                    download[0].catalog.push({
+                                        extag: item.extag,
+                                        fileCount: fileCount,
+                                        exMaster: item,
+                                        exContent: null,
+                                        localVersion: item.publish.toString(),
+                                        serverVersion: item.publish.toString()
+                                    });
+                                }
+                                else {
+                                    //更新服务器版本（跟本地版本比较显示下载图标）
+                                    catalog[0].serverVersion = item.publish.toString();
+                                    //删除版本不一致的配置和封面内容并添加新的配置和封面内容
+                                    if (catalog[0].localVersion != item.publish.toString()) {
+                                        realm.delete(realm.objects('Content').filtered('extag="' + item.extag + '" AND usage="0"'));
+                                        realm.delete(realm.objects('ExMaster').filtered('extag="' + item.extag + '"'));
+                                        let fileCount = item.fileCount;
+                                        delete item.fileCount;
+                                        item.content.usage = "0";
+                                        item.content.extag = item.extag;
+                                        catalog[0].fileCount = fileCount;
+                                        catalog[0].exMaster = item;
+
+
+                                        FileMgr.downloadFile(
+                                            item.content.serverpath,
+                                            item.content.clientpath,
+                                            item.content.filename
+                                        );
+                                    }
+                                    else {
+                                        //如果目录版本一致则不用处理
+                                    }
+                                }
                             }
 
                             console.log('update catalog');
@@ -763,7 +819,9 @@ module.exports = ({
                                 extag: item.extag,
                                 fileCount: fileCount,
                                 exMaster: item,
-                                exContent: null
+                                exContent: null,
+                                localVersion: item.publish.toString(),
+                                serverVersion: item.publish.toString()
                             });
                         }
 

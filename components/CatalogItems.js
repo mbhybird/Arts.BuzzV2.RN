@@ -48,7 +48,7 @@ var SwiperComp = React.createClass({
 
         let catalog = RealmRepo.getCatalog();
 
-        if (catalog != null) {
+        if (catalog) {
             catalogList = [];
             catalog.forEach((item)=> {
                 let fileCount = item.fileCount;
@@ -59,7 +59,7 @@ var SwiperComp = React.createClass({
                 let serverPath = item.exMaster.content.serverpath;
                 let imagePath = networkState ? serverPath : clientPath;
                 catalogList.push({
-                    opacity: (fileCount == contentCount) ? 0 : 100,
+                    opacity: ((fileCount == contentCount) && (item.localVersion == item.serverVersion)) ? 0 : 100,
                     imageUri: imagePath,
                     desc: item.exMaster["description_" + RealmRepo.Locale().displayLang],
                     exTag: item.extag
