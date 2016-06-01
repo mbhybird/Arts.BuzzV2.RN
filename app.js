@@ -93,6 +93,32 @@ var modalState = false;
 var s = null;
 var canReceiveSignal = false;
 
+/*
+RCTPushNotificationManager.m
+
+//notification.soundName = [RCTConvert NSString:details[@"soundName"]] ?: UILocalNotificationDefaultSoundName;
+
+RCTSplashScreen.m
+
+UIImageView *view = [[UIImageView alloc]initWithFrame:[UIScreen mainScreen].bounds];
+view.image = [UIImage imageNamed:@"icon_logo"];
+view.contentMode = UIViewContentModeScaleAspectFill;
+
+CGSize mainScreenBoundsSize = [UIScreen mainScreen].bounds.size;
+UILabel *label = [[ UILabel alloc] init];
+NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];
+NSString *appVersion = [infoDictionary objectForKey:@"CFBundleShortVersionString"];
+NSString *appBuild = [infoDictionary objectForKey:@"CFBundleVersion"];
+label.text = [NSString stringWithFormat:@"VERSION:%@.%@", appVersion, appBuild];
+UIFont *font = [UIFont fontWithName:@"Arial" size:20.0f];
+label.font = font;
+label.textAlignment = NSTextAlignmentCenter;
+label.frame = CGRectMake(0, mainScreenBoundsSize.height-50, mainScreenBoundsSize.width, 50);
+label.backgroundColor = [UIColor clearColor];
+[label setTextColor:[UIColor whiteColor]];
+[view addSubview:label];
+
+*/
 var App = React.createClass({
     mixins:[EventEmitterMixin,TimerMixin],
     _sendNotification(message) {
@@ -165,6 +191,7 @@ var App = React.createClass({
                     } else {
                         //background
                         var title = null;
+                        var exTitle = null;
                         orderList.forEach((item)=> {
                             let beacon = RealmRepo.getBeaconInfo(item.major, item.minor);
                             if (beacon) {
@@ -174,6 +201,8 @@ var App = React.createClass({
                                 var state = 0;
                                 let content = beacon.triggercontent[0].content;
                                 title = content ? content['title_' + RealmRepo.Locale().displayLang] : "";
+                                let exMaster = RealmRepo.getExMaster(beacon.extag);
+                                exTitle = exMaster ? exMaster['title_' + RealmRepo.Locale().displayLang] : null;
 
                                 if (audio) {
                                     let audioContent = audio.content;
@@ -234,7 +263,7 @@ var App = React.createClass({
                                             RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
                                         }
                                         console.log('open', headState.beaconId);
-                                        this._sendNotification(title);
+                                        this._sendNotification(exTitle ? exTitle + '\r\n' + title : title);
                                         this.playSound();
                                         lastBeaconId = headState.beaconId;
                                         History.lastPlayBeaconId = lastBeaconId;
@@ -260,7 +289,7 @@ var App = React.createClass({
                                                     RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
                                                 }
                                                 console.log('open', headState.beaconId);
-                                                this._sendNotification(title);
+                                                this._sendNotification(exTitle ? exTitle + '\r\n' + title : title);
                                                 this.playSound();
                                                 lastBeaconId = headState.beaconId;
                                                 History.lastPlayBeaconId = lastBeaconId;

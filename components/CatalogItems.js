@@ -43,7 +43,8 @@ var SwiperComp = React.createClass({
             opacity: 0,
             imageUri: 'macaudefault',
             desc: RealmRepo.getLocaleValue('main_about'),
-            exTag: 'macaudefault'
+            exTag: 'macaudefault',
+            versionMatch: true
         }];
 
         let catalog = RealmRepo.getCatalog();
@@ -59,10 +60,11 @@ var SwiperComp = React.createClass({
                 let serverPath = item.exMaster.content.serverpath;
                 let imagePath = networkState ? serverPath : clientPath;
                 catalogList.push({
-                    opacity: ((fileCount == contentCount) && (item.localVersion == item.serverVersion)) ? 0 : 100,
+                    opacity: (fileCount == contentCount) ? 0 : 100,
                     imageUri: imagePath,
                     desc: item.exMaster["description_" + RealmRepo.Locale().displayLang],
-                    exTag: item.extag
+                    exTag: item.extag,
+                    versionMatch: item.localVersion == item.serverVersion
                 });
             });
         }
@@ -82,7 +84,8 @@ var SwiperComp = React.createClass({
                         () => {
                             this.eventEmitter('emit', 'iconShow', {
                                 opacity: this.state.catalogList[0].opacity,
-                                exTag: this.state.catalogList[0].exTag
+                                exTag: this.state.catalogList[0].exTag,
+                                versionMatch: this.state.catalogList[0].versionMatch
                             });
                         }
                         , 500);
@@ -98,7 +101,8 @@ var SwiperComp = React.createClass({
             this.getCatalogList();
             this.eventEmitter('emit', 'iconShow', {
                 opacity: updateCatList[curIndex].opacity,
-                exTag: updateCatList[curIndex].exTag
+                exTag: updateCatList[curIndex].exTag,
+                versionMatch: updateCatList[curIndex].versionMatch
             });
             this.eventEmitter('emit', 'catalogDownload');
         });
@@ -111,7 +115,8 @@ var SwiperComp = React.createClass({
         try {
             this.eventEmitter('emit', 'iconShow', {
                 opacity: updateCatList[state.index].opacity,
-                exTag: updateCatList[state.index].exTag
+                exTag: updateCatList[state.index].exTag,
+                versionMatch: updateCatList[state.index].versionMatch
             });
         }catch(ex){
 

@@ -127,13 +127,17 @@ var ToolBar = React.createClass({
         return {
             opacity: 0,
             exTag: "",
-            signalReceive: false
+            signalReceive: false,
+            versionMatch: true
         };
     },
     componentDidMount(){
         this.eventEmitter('on', 'iconShow', (params)=> {
-            this.setState({opacity: params.opacity});
-            this.setState({exTag: params.exTag});
+            this.setState({
+                opacity: params.opacity,
+                exTag: params.exTag,
+                versionMatch: params.versionMatch
+            });
         });
 
         this.eventEmitter('on', 'signalReceive', (value)=> {
@@ -149,7 +153,7 @@ var ToolBar = React.createClass({
                    <Image source={{uri:"more"}}
                           style={{width: 50, height: 50}}/>
                </Button>
-               { this.state.signalReceive ?
+               { (this.state.signalReceive && (this.state.opacity == 0 || !this.state.versionMatch)) ?
                    (<Button onPress={Actions.ball}>
                        <Image source={{uri:"go_w"}}
                               style={{width: 50, height: 50}}/>
@@ -167,10 +171,12 @@ var ToolBar = React.createClass({
                </Button>
                */}
                <Button onPress={()=>{
-                    this.eventEmitter('emit', 'downloadStart');
-                    RealmRepo.updateExContent(this.state.exTag,()=>{
-                        this.eventEmitter('emit', 'downloadChanged');
-                    });
+                    if(this.state.opacity == 100){
+                        this.eventEmitter('emit', 'downloadStart');
+                        RealmRepo.updateExContent(this.state.exTag,()=>{
+                            this.eventEmitter('emit', 'downloadChanged');
+                        });
+                    }
                     //RealmRepo.removeAllData();//for debug
                 }}>
                    <Image source={{uri:"icon_download"}}

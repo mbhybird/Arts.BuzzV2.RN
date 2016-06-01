@@ -251,6 +251,10 @@ ResourcesInit.push({key: 'msg_network_connect_fail',locale:'en', value:'Network 
 ResourcesInit.push({key: 'msg_network_connect_fail',locale:'pt', value:'Rede não está conectado!'});
 ResourcesInit.push({key: 'msg_network_connect_fail',locale:'cn', value:'网络没有连接!'});
 ResourcesInit.push({key: 'msg_network_connect_fail',locale:'tw', value:'網絡沒有連接!'});
+ResourcesInit.push({key: 'lbl_profile',locale:'en', value:'My Profile'});
+ResourcesInit.push({key: 'lbl_profile',locale:'pt', value:'Nenhum perfil'});
+ResourcesInit.push({key: 'lbl_profile',locale:'cn', value:'个人资料'});
+ResourcesInit.push({key: 'lbl_profile',locale:'tw', value:'個人資料'});
 
 const PORT = 81;
 
@@ -530,6 +534,15 @@ module.exports = ({
         else {
             return null;
         }
+    },
+    getExMaster:(exTag)=> {
+        let exMaster = realm.objects('ExMaster').filtered('extag="' + exTag + '"');
+        var ex = null;
+        if (exMaster.length > 0) {
+            ex = exMaster[0]
+        }
+
+        return ex;
     },
     getFavorites: () => {
         let fav = realm.objects('Favorites');
