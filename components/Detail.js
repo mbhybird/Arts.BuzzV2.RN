@@ -8,9 +8,13 @@ import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 var Sound = require('react-native-sound');
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AweIcon from 'react-native-vector-icons/FontAwesome';
+import EviIcon from 'react-native-vector-icons/EvilIcons';
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RNS = NativeModules.RNSound;
 const RealmRepo = require("./RealmRepo.js");
+var {FBSDKShareDialog,FBSDKShareLinkContent,} = require('react-native-fbsdkshare');
+var ActionSheet = require('@remobile/react-native-action-sheet');
 
 /*
 RNSound.m
@@ -74,8 +78,71 @@ var Detail = React.createClass({
             }
         });
 
+        var sharedEnabled = false;
+        var fbEnabled = false;
+        var wcEnabled = false;
+        let user = RealmRepo.getUser();
+        if (user) {
+            if (user.fbProfile) {
+                fbEnabled = true;
+                sharedEnabled = true;
+            }
+            if (user.wcProfile) {
+                wcEnabled = true;
+                sharedEnabled = true;
+            }
+        }
         return {
-            sound: s
+            sound: s,
+            show: false,
+            fbEnabled: fbEnabled,
+            wcEnabled: wcEnabled,
+            sharedEnabled: sharedEnabled
+        }
+    },
+    onCancel() {
+        this.setState({show:false});
+    },
+    onOpen() {
+        this.setState({show:true});
+    },
+    shareLinkContent(contentURL, contentDescription, contentTitle, imageURL){
+        var linkContent = new FBSDKShareLinkContent(contentURL, contentDescription, contentTitle, imageURL);
+        FBSDKShareDialog.setContent(linkContent);
+        FBSDKShareDialog.validateWithError((error) => {
+            if (!error) {
+                FBSDKShareDialog.show((sError, result) => {
+                    if (!sError) {
+                        console.log('shared ok.');
+                    } else {
+                        console.log('shared failed.');
+                    }
+                });
+            }
+        });
+    },
+    shareHandle(mode){
+        let shareInfo = RealmRepo.getShareInfo(this.props.extag, this.props.refImageId);
+        if (shareInfo) {
+            if (mode == 'wechat') {
+                NativeModules.WeChatAPI.shareLinkToTimeLine(
+                    'http://arts.things.buzz/share/'
+                    + `${this.props.extag}-${this.props.refImageId}-${RealmRepo.Locale().displayLang}.html`,
+                    shareInfo.imageUrl,
+                    'Arts.Buzz' + '/' + shareInfo.exTitle + '/' + shareInfo.title,
+                    null, ()=> {
+                    }
+                );
+            }
+            else if (mode == 'facebook') {
+                this.shareLinkContent(
+                    'http://arts.things.buzz/share/'
+                    + `${this.props.extag}-${this.props.refImageId}-${RealmRepo.Locale().displayLang}.html`,
+                    '',
+                    'Arts.Buzz' + '/' + shareInfo.exTitle + '/' + shareInfo.title,
+                    shareInfo.imageUrl
+                );
+            }
         }
     },
     render: function () {
@@ -92,7 +159,25 @@ var Detail = React.createClass({
                         scrollEnabled={true}
                         />
                 </View>
-                <ToolBar {...this.props} sound={this.state.sound}/>
+                <ToolBar {...this.props} sound={this.state.sound} openSheet={this.onOpen} sharedEnabled={this.state.sharedEnabled}/>
+                <ActionSheet
+                    visible={this.state.show}
+                    onCancel={this.onCancel}>
+                    {this.state.fbEnabled ?
+                        (<ActionSheet.Button
+                            onPress={()=>{this.shareHandle('facebook');}}>
+                            <AweIcon name={'facebook-square'} size={38} color="#00BFFF"/>
+                        </ActionSheet.Button>)
+                        : null
+                    }
+                    {this.state.wcEnabled ?
+                        (<ActionSheet.Button
+                            onPress={()=>{this.shareHandle('wechat');}}>
+                            <AweIcon name={'wechat'} size={35} color="#B8E986"/>
+                        </ActionSheet.Button>)
+                        : null
+                    }
+                </ActionSheet>
             </View>
         );
     }
@@ -197,9 +282,13 @@ var ToolBar = React.createClass({
                         justifyContent: "space-around",
                         paddingLeft:10
                     }}>
-                    <Button onPress={()=>{alert('share');}}>
-                        <Icon name="share" size={35} color="#fff"/>
-                    </Button>
+                    { this.props.sharedEnabled ?
+                        (
+                            <Button onPress={this.props.openSheet}>
+                                <Icon name="share" size={35} color="#fff"/>
+                            </Button>
+                        ) : null
+                    }
 
                     {this.state.play ?
                         (<Button onPress={this.pause}>

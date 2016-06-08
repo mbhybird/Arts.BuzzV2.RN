@@ -137,7 +137,9 @@ Config.schema = {
         email: {type: 'string'},
         displayLang: {type: 'int'},
         voiceLang: {type: 'int'},
-        firstTimeLogin: {type: 'int'}
+        firstTimeLogin: {type: 'int'},
+        fbProfile: {type: 'string', optional: true},
+        wcProfile: {type: 'string', optional: true}
     }
 };
 
@@ -255,6 +257,14 @@ ResourcesInit.push({key: 'lbl_profile',locale:'en', value:'My Profile'});
 ResourcesInit.push({key: 'lbl_profile',locale:'pt', value:'Nenhum perfil'});
 ResourcesInit.push({key: 'lbl_profile',locale:'cn', value:'个人资料'});
 ResourcesInit.push({key: 'lbl_profile',locale:'tw', value:'個人資料'});
+ResourcesInit.push({key: 'lbl_link_to_facebook',locale:'en', value:'link to Facebook'});
+ResourcesInit.push({key: 'lbl_link_to_facebook',locale:'pt', value:'link para Facebook'});
+ResourcesInit.push({key: 'lbl_link_to_facebook',locale:'cn', value:'连接到Facebook'});
+ResourcesInit.push({key: 'lbl_link_to_facebook',locale:'tw', value:'連接到Facebook'});
+ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'en', value:'link to WeChat'});
+ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'pt', value:'link para WeChat'});
+ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'cn', value:'连接到微信'});
+ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'tw', value:'連接到微信'});
 
 const PORT = 81;
 
@@ -390,6 +400,22 @@ module.exports = ({
             return Resources[0].value;
         }
     },
+    linkFacebookProfile:(data)=> {
+        let config = realm.objects('Config');
+        if (config.length > 0) {
+            realm.write(() => {
+                config[0].fbProfile = data;
+            });
+        }
+    },
+    linkWeChatProfile:(data)=> {
+        let config = realm.objects('Config');
+        if (config.length > 0) {
+            realm.write(() => {
+                config[0].wcProfile = data;
+            });
+        }
+    },
     getUser:()=> {
         let config = realm.objects('Config');
         var user = null;
@@ -438,7 +464,9 @@ module.exports = ({
                                 email: userConfig.email,
                                 displayLang: displayLang,
                                 voiceLang: voiceLang,
-                                firstTimeLogin: 0
+                                firstTimeLogin: 0,
+                                fbProfile: null,
+                                wcProfile: null
                             };
                             realm.create('Config', user);
                         });
@@ -543,6 +571,21 @@ module.exports = ({
         }
 
         return ex;
+    },
+    getShareInfo:(exTag, refImageId)=> {
+        var shareInfo = null;
+        let exMaster = realm.objects('ExMaster').filtered('extag="' + exTag + '"');
+        let imageContent = realm.objects('Content').filtered('contentid="' + refImageId + '"');
+        if (exMaster.length > 0) {
+            shareInfo = {};
+            shareInfo.exTitle = exMaster[0]["title_" + getLocale().displayLang];
+        }
+        if (imageContent.length > 0) {
+            shareInfo.title = imageContent[0]["title_" + getLocale().displayLang];
+            shareInfo.imageUrl = imageContent[0].serverpath;
+        }
+
+        return shareInfo;
     },
     getFavorites: () => {
         let fav = realm.objects('Favorites');

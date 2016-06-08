@@ -11,14 +11,72 @@ var {
     TouchableHighlight,
     TouchableOpacity,
     Platform,
-    Image
+    Image,
+    NativeAppEventEmitter,
+    NativeModules,
     } = React;
 
 var GiftedListView = require('react-native-gifted-listview');
 var GiftedSpinner = require('react-native-gifted-spinner');
 const RealmRepo = require("./RealmRepo.js");
+var WeChatAPI = require('react-native-wx/index.js');
+var FBLoginManager = require('NativeModules').FBSDKLoginManager;
+var FBSDKCore = require('react-native-fbsdkcore');
+var {FBSDKAccessToken,FBSDKGraphRequest} = FBSDKCore;
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 var Profile = React.createClass({
+    facebookLoginHandle: function (error, result) {
+        var self = this;
+        if (result && result.name) {
+            RealmRepo.linkFacebookProfile(JSON.stringify(result));
+            try {
+                self.refs.lv._refresh();
+            }catch(ex){
+                console.log(ex);
+            }
+        }
+    },
+    componentDidMount: function () {
+        var self = this;
+        NativeAppEventEmitter.addListener('WeChat_Resp', (resp)=> {
+            NativeModules.AppLogin.wxLoginWithRespInfo(resp, (data)=> {
+                if(data && data.nickname) {
+                    RealmRepo.linkWeChatProfile(JSON.stringify(data));
+                    try {
+                        self.refs.lv._refresh();
+                    }catch(ex){
+                        console.log(ex);
+                    }
+                }
+            })
+        });
+    },
+    facebookLogin: function () {
+        var self = this;
+        FBLoginManager.logInWithReadPermissions(['email','public_profile','user_friends'], function (error, data) {
+            if (!error) {
+                FBSDKAccessToken.getCurrentAccessToken((event)=> {
+                    if (event) {
+                        var profileRequest = new FBSDKGraphRequest(
+                            self.facebookLoginHandle,
+                            '/' + event.userID,
+                            {
+                                type: {string: 'public_profile'},
+                                fields: {string: 'id,name,picture,gender'}
+                            }
+                        );
+                        profileRequest.start();
+                    }
+                });
+            } else {
+                console.log(error, data);
+            }
+        });
+    },
+    weChatLogin: function () {
+        WeChatAPI.login();
+    },
     /**
      * Will be called when refreshing
      * Should be replaced by your own logic
@@ -28,10 +86,29 @@ var Profile = React.createClass({
      */
         _onFetch(page = 1, callback, options) {
         var rows = {};
-        let profile = [
-            {title: 'WeChat Profile Link', linked: true},
-            {title: 'Facebook Profile Link', linked: false}
+        var profile = [
+            {title:RealmRepo.getLocaleValue('lbl_link_to_wechat'), linked: false, mode: 'wechat'},
+            {title:RealmRepo.getLocaleValue('lbl_link_to_facebook'), linked: false, mode: 'facebook'}
         ];
+        let user = RealmRepo.getUser();
+        if(user) {
+            if(user.wcProfile){
+                let jsonObject = JSON.parse(user.wcProfile);
+                if (jsonObject) {
+                    profile[0].title = jsonObject.nickname;
+                    profile[0].linked = true;
+                }
+            }
+
+            if (user.fbProfile) {
+                let jsonObject = JSON.parse(user.fbProfile);
+                if (jsonObject) {
+                    profile[1].title = jsonObject.name;
+                    profile[1].linked = true;
+                }
+            }
+        }
+
         rows['header'] = [];
         for (var item of profile) {
             rows['header'].push(item);
@@ -45,7 +122,12 @@ var Profile = React.createClass({
      * @param {object} rowData Row data
      */
         _onPress(rowData) {
-        alert(rowData);
+        if (rowData.mode == 'wechat') {
+            this.weChatLogin();
+        }
+        else if (rowData.mode == 'facebook') {
+            this.facebookLogin();
+        }
     },
 
     /**
@@ -57,17 +139,18 @@ var Profile = React.createClass({
             <TouchableOpacity key={`${Math.random()}`}
                               style={customStyles.row}
                               underlayColor='#c8c8c8'
-                              onPress={() => this._onPress(rowData.title)}
+                              onPress={() => this._onPress(rowData)}
                 >
                 <View style={{
                     flexDirection:'row',
                     justifyContent:'center',
                     alignItems:'center'
                 }}>
-                    <Image source={{uri:rowData.linked?'dlfinished':'profile-circle'}}
-                           style={{width: 25, height: 25, margin:5}}/>
-                    <View style={{flexWrap:'wrap',width:225}}>
-                        <Text style={{fontSize:16,fontWeight:'300'}}>{rowData.title}</Text>
+                    <Icon name={rowData.mode == 'wechat'? 'wechat' : 'facebook-square'} size={40} color={
+                        rowData.linked ? (rowData.mode == 'wechat' ? '#B8E986':'#00BFFF') : '#FFF'
+                    }/>
+                    <View style={{flexWrap:'wrap',width:200,paddingLeft:10}}>
+                        <Text style={{fontSize:18,fontWeight:'300'}}>{rowData.title}</Text>
                     </View>
                 </View>
             </TouchableOpacity>

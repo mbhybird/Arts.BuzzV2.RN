@@ -6,6 +6,7 @@
     "start": "node node_modules/react-native/local-cli/cli.js start"
   },
   "dependencies": {
+    "@remobile/react-native-action-sheet": "^1.0.1",
     "@remobile/react-native-splashscreen": "^1.0.3",
     "async": "^2.0.0-rc.3",
     "immutable": "^3.8.1",
@@ -17,6 +18,9 @@
     "react-native-button": "^1.2.1",
     "react-native-device-info": "^0.9.3",
     "react-native-drawer": "^1.16.7",
+    "react-native-fbsdkcore": "0.0.8",
+    "react-native-fbsdklogin": "0.0.8",
+    "react-native-fbsdkshare": "0.0.8",
     "react-native-file-download": "0.0.8",
     "react-native-fs": "^1.4.0",
     "react-native-gifted-listview": "0.0.14",
@@ -31,6 +35,7 @@
     "react-native-swipeout": "^2.0.12",
     "react-native-swiper": "^1.4.3",
     "react-native-vector-icons": "^2.0.1",
+    "react-native-wx": "1.0.7",
     "react-timer-mixin": "^0.13.3",
     "realm": "^0.11.1",
     "request": "^2.72.0"
