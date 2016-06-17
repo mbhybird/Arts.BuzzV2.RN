@@ -17,6 +17,7 @@ var Sound = require('react-native-sound');
 const RNS = NativeModules.RNSound;
 const RealmRepo = require("./components/RealmRepo.js");
 const History  = require("./components/History.js");
+import Help from "./components/Help";
 var _ = require('lodash');
 
 class TabIcon extends React.Component {
@@ -344,6 +345,9 @@ var App = React.createClass({
                             <Scene key="monitor" initial={true} hideNavBar={true}>
                                 <Scene key="ballView" component={BallView}/>
                             </Scene>
+                        </Scene>
+                        <Scene key="help">
+                            <Scene key="helpModal" component={Help} hideNavBar={true}/>
                         </Scene>
                     </Scene>
                     <Scene key="detail">

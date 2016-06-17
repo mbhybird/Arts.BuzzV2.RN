@@ -121,6 +121,8 @@ var BeaconView = React.createClass({
                             beaconState.push(newBeacon);
                         }
 
+                        let bgColor = this.props.altRow ? '#9FADAD': '#88C1C1';
+
                         return (
                             <TouchableOpacity onPress={()=>{
                                     Actions.detail({
@@ -143,7 +145,7 @@ var BeaconView = React.createClass({
                                                resizeMode={Image.resizeMode.cover}
                                             />
                                     </View>
-                                    <View style={styles.descView}>
+                                    <View style={[styles.descView,{backgroundColor:bgColor}]}>
                                         {beacon.displayname ?
                                             (<Text style={styles.descText}>
                                                 {beacon.displayname}
@@ -282,16 +284,33 @@ var BeaconList = React.createClass({
         });
     },
 
-    renderRow: function(rowData) {
-        return <BeaconView {...rowData} style={styles.row}/>
+    renderRow: function(rowData,sectionID,rowID) {
+        return <BeaconView {...rowData} style={styles.row} altRow={rowID%2==0}/>
     },
+    renderHeader:function() {
+        var title = null;
+        let exMaster = (History.lastAccessExTag == '') ? null : RealmRepo.getExMaster(History.lastAccessExTag);
+        if (exMaster) {
+            let locale = RealmRepo.Locale().displayLang;
+            title = exMaster["title_" + locale];
+            var trimLength = 15;//en or pt
+            if (locale == 'cn' || locale == 'tw') {
+                trimLength = 8;//cn or tw
+            }
+            if (title.length > trimLength) {
+                title = title.slice(0, trimLength).concat('...');
+            }
+        }
 
+        return title ? (<View style={styles.headerView}><Text style={styles.headerText}>{title}</Text></View>) : null;
+    },
     render: function() {
         return (
             <View style={styles.container}>
                 <ListView
                     dataSource={this.state.dataSource}
                     renderRow={this.renderRow}
+                    renderHeader={this.renderHeader}
                     enableEmptySections={true}
                     />
             </View>
@@ -307,16 +326,25 @@ var styles = StyleSheet.create({
         alignItems: 'flex-start',
         backgroundColor: '#698686'
     },
+    headerView:{
+        height:60,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        width:deviceScreen.width
+    },
+    headerText:{
+        fontSize: 30,
+        color:'white',
+        fontFamily:'Arial-BoldMT',
+        textAlign:'center'
+    },
     headline: {
         fontSize: 20,
         paddingTop: 20
     },
     row: {
         flexDirection: 'row',
-        paddingBottom: 10,
-        margin: 5,
-        borderBottomWidth:1,
-        borderBottomColor:'#D3D3D3',
+        paddingBottom: 5,
         width:deviceScreen.width
     },
     imageView: {
@@ -325,15 +353,16 @@ var styles = StyleSheet.create({
     },
     descView: {
         flexDirection: 'column',
-        margin: 10,
-        padding: 5,
-        backgroundColor: '#698686',
-        width: 140
+        alignItems: 'flex-end',
+        width:deviceScreen.width-150,
+        height:100
     },
     descText: {
-        fontSize: 16,
+        fontSize: 20,
+        fontFamily:'Arial-BoldMT',
         color:'white',
-        lineHeight:20
+        lineHeight:30,
+        paddingRight:5
     },
     smallText: {
         fontSize: 11

@@ -11,6 +11,10 @@ import React, {
   View
 } from 'react-native';
 
+console.disableYellowBox = true;
+console.warn('YellowBox is disabled.');
+//console.ignoredYellowBox = ['Warning: Failed propType: SceneView'];
+
 import App from './app';
 
 AppRegistry.registerComponent("ArtsBuzzV2", () => App);

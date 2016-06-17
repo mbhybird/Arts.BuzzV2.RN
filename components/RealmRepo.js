@@ -265,6 +265,26 @@ ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'en', value:'link to WeChat
 ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'pt', value:'link para WeChat'});
 ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'cn', value:'连接到微信'});
 ResourcesInit.push({key: 'lbl_link_to_wechat',locale:'tw', value:'連接到微信'});
+ResourcesInit.push({key: 'lbl_share_to_facebook',locale:'en', value:'Share on Facebook'});
+ResourcesInit.push({key: 'lbl_share_to_facebook',locale:'pt', value:'Partilhar no Facebook'});
+ResourcesInit.push({key: 'lbl_share_to_facebook',locale:'cn', value:'分享到脸书'});
+ResourcesInit.push({key: 'lbl_share_to_facebook',locale:'tw', value:'分享到臉書'});
+ResourcesInit.push({key: 'lbl_share_to_wechat',locale:'en', value:'Share on WeChat'});
+ResourcesInit.push({key: 'lbl_share_to_wechat',locale:'pt', value:'Partilhar no WeChat'});
+ResourcesInit.push({key: 'lbl_share_to_wechat',locale:'cn', value:'分享到微信'});
+ResourcesInit.push({key: 'lbl_share_to_wechat',locale:'tw', value:'分享到微信'});
+ResourcesInit.push({key: 'lbl_share',locale:'en', value:'Share'});
+ResourcesInit.push({key: 'lbl_share',locale:'pt', value:'Partilhar'});
+ResourcesInit.push({key: 'lbl_share',locale:'cn', value:'分享'});
+ResourcesInit.push({key: 'lbl_share',locale:'tw', value:'分享'});
+ResourcesInit.push({key: 'lbl_help',locale:'en', value:'Help'});
+ResourcesInit.push({key: 'lbl_help',locale:'pt', value:'Socorro'});
+ResourcesInit.push({key: 'lbl_help',locale:'cn', value:'帮助'});
+ResourcesInit.push({key: 'lbl_help',locale:'tw', value:'幫助'});
+ResourcesInit.push({key: 'lbl_skip',locale:'en', value:'Skip'});
+ResourcesInit.push({key: 'lbl_skip',locale:'pt', value:'Pular'});
+ResourcesInit.push({key: 'lbl_skip',locale:'cn', value:'跳过'});
+ResourcesInit.push({key: 'lbl_skip',locale:'tw', value:'跳過'});
 
 const PORT = 81;
 

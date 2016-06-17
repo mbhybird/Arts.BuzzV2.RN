@@ -1,4 +1,4 @@
-import React, {View, Text, StyleSheet,Image,Dimensions,ActivityIndicatorIOS} from "react-native";
+import React, {View, Text, StyleSheet,Image,Dimensions,ActivityIndicatorIOS,Alert} from "react-native";
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 const EventEmitterMixin = require('react-event-emitter-mixin');
@@ -6,6 +6,9 @@ var Modal = require('react-native-modalbox');
 const RealmRepo = require("./RealmRepo.js");
 import CatalogItems from "./CatalogItems"
 var ProgressBar = require('react-native-progress-bar');
+const History  = require("./History.js");
+import BluetoothState from 'react-native-bluetooth-state';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const styles = StyleSheet.create({
     container: {
@@ -128,11 +131,13 @@ var ToolBar = React.createClass({
             opacity: 0,
             exTag: "",
             signalReceive: false,
-            versionMatch: true
+            versionMatch: true,
+            btON: true
         };
     },
     componentDidMount(){
         this.eventEmitter('on', 'iconShow', (params)=> {
+            History.lastAccessExTag = params.exTag;
             this.setState({
                 opacity: params.opacity,
                 exTag: params.exTag,
@@ -145,18 +150,36 @@ var ToolBar = React.createClass({
                 signalReceive: value
             });
         });
+
+        BluetoothState.subscribe(bluetoothState => {
+            this.setState({btON: bluetoothState == 'on'});
+        });
     },
    render(){
        return (
            <View style={styles.menu}>
                <Button onPress={()=>{this.eventEmitter('emit','drawerOpenFromCatalog');}}>
-                   <Image source={{uri:"more"}}
+                   <Image source={{uri:"menu"}}
                           style={{width: 50, height: 50}}/>
                </Button>
                { (this.state.signalReceive && (this.state.opacity == 0 || !this.state.versionMatch)) ?
                    (<Button onPress={Actions.ball}>
-                       <Image source={{uri:"go_w"}}
+                       <Image source={{uri:"ble_1"}}
                               style={{width: 50, height: 50}}/>
+                   </Button>) :
+                   null
+               }
+               { !this.state.btON ?
+                   (<Button onPress={()=>{
+                        Alert.alert(
+                            RealmRepo.getLocaleValue('msg_dlg_title_tips'),
+                            RealmRepo.getLocaleValue('msg_bt_is_not_ready'),
+                            [
+                                {text: RealmRepo.getLocaleValue('msg_dlg_ok')}
+                            ]
+                        );
+                   }}>
+                       <Icon name="bluetooth-disabled" size={50} color="lightgray"/>
                    </Button>) :
                    null
                }
@@ -179,7 +202,7 @@ var ToolBar = React.createClass({
                     }
                     //RealmRepo.removeAllData();//for debug
                 }}>
-                   <Image source={{uri:"icon_download"}}
+                   <Image source={{uri:"download"}}
                           style={{width: 50, height: 50, opacity:this.state.opacity}}/>
                </Button>
            </View>

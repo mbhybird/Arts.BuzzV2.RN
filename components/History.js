@@ -4,5 +4,6 @@
 'use strict';
 
 module.exports = {
-    lastPlayBeaconId: ''
+    lastPlayBeaconId: '',
+    lastAccessExTag: ''
 };

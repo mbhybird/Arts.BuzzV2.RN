@@ -24,32 +24,68 @@ var FBLoginManager = require('NativeModules').FBSDKLoginManager;
 var FBSDKCore = require('react-native-fbsdkcore');
 var {FBSDKAccessToken,FBSDKGraphRequest} = FBSDKCore;
 import Icon from 'react-native-vector-icons/FontAwesome';
+const EventEmitterMixin = require('react-event-emitter-mixin');
 
 var Profile = React.createClass({
+    mixins:[EventEmitterMixin],
     facebookLoginHandle: function (error, result) {
-        var self = this;
         if (result && result.name) {
             RealmRepo.linkFacebookProfile(JSON.stringify(result));
             try {
-                self.refs.lv._refresh();
+                this.eventEmitter('emit', 'profileChanged');
             }catch(ex){
                 console.log(ex);
             }
         }
     },
     componentDidMount: function () {
-        var self = this;
+        this.eventEmitter('on', 'profileChanged', ()=> {
+            this.refs.lv._refresh();
+        });
+
         NativeAppEventEmitter.addListener('WeChat_Resp', (resp)=> {
-            NativeModules.AppLogin.wxLoginWithRespInfo(resp, (data)=> {
-                if(data && data.nickname) {
-                    RealmRepo.linkWeChatProfile(JSON.stringify(data));
-                    try {
-                        self.refs.lv._refresh();
-                    }catch(ex){
+            if (resp.errCode == 0) {
+                let getAccessTokenAndOpenIdUrl =
+                    "https://api.weixin.qq.com/sns/oauth2/access_token"
+                    + "?appid=wx7352b6799da2cf9e"
+                    + "&secret=d4624c36b6795d1d99dcf0547af5443d"
+                    + "&code=" + resp.code + "&grant_type=authorization_code";
+
+                fetch(getAccessTokenAndOpenIdUrl)
+                    .then(res=> res.json())
+                    .then(res=> {
+                        if (res.errcode > 0) {
+                            console.log(res.errmsg);
+                        }
+                        else {
+                            let getUserInfoUrl =
+                                "https://api.weixin.qq.com/sns/userinfo"
+                                + "?access_token=" + res.access_token
+                                + "&openid=" + res.openid;
+
+                            fetch(getUserInfoUrl)
+                                .then(res=>res.json())
+                                .then(res=> {
+                                    if (res && res.nickname) {
+                                        RealmRepo.linkWeChatProfile(JSON.stringify(res));
+                                    }
+                                })
+                                .then(()=> {
+                                    try {
+                                        this.eventEmitter('emit', 'profileChanged');
+                                    } catch (ex) {
+                                        console.log(ex);
+                                    }
+                                });
+                        }
+                    })
+                    .catch((ex)=> {
                         console.log(ex);
-                    }
-                }
-            })
+                    });
+            }
+            else {
+                console.log(resp.errMsg);
+            }
         });
     },
     facebookLogin: function () {

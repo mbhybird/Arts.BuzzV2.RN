@@ -10,20 +10,20 @@ const styles = StyleSheet.create({
         flex: 10,
         justifyContent: "center",
         alignItems: "stretch",
-        backgroundColor: "#698686",
+        backgroundColor: "#698686"
     },
     menu: {
         flex:1,
         padding:5,
         flexDirection:'row',
         alignItems: "flex-end",
-        justifyContent: "space-between",
+        justifyContent: "space-between"
     },
     body: {
         flex:9,
         justifyContent: "center",
-        alignItems: "center",
-    },
+        alignItems: "center"
+    }
 });
 
 var BallView = React.createClass({
@@ -51,15 +51,15 @@ var BallView = React.createClass({
                 </View>
                 <View style={styles.menu}>
                     <Button onPress={()=>{this.eventEmitter('emit','drawerOpenFromBallView');}}>
-                        <Image source={{uri:'more'}}
+                        <Image source={{uri:'menu'}}
                                style={{width: 50, height: 50}}/>
                     </Button>
                     <Button onPress={Actions.home}>
-                        <Image source={{uri:'back_w'}}
-                               style={{width: 45, height: 45}}/>
+                        <Image source={{uri:'back'}}
+                               style={{width: 50, height: 50}}/>
                     </Button>
                     <Button>
-                        <Text style={{paddingRight:5,color:'darkgray',fontSize:22,fontWeight:'bold'}}>
+                        <Text style={{paddingRight:5,color:'darkgray',fontSize:22,fontWeight:'bold',width:20}}>
                             {this.state.beaconCount ? this.state.beaconCount : ""}
                         </Text>
                         <Image source={{uri:'icon_board'}}

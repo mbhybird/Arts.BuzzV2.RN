@@ -3,7 +3,7 @@
  */
 
 var React = require('react-native');
-var { StyleSheet, View,Text,Image,Dimensions,WebView,NativeModules } = React;
+var { StyleSheet, View,Text,Image,Dimensions,WebView,NativeModules,NativeAppEventEmitter } = React;
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 var Sound = require('react-native-sound');
@@ -107,17 +107,31 @@ var Detail = React.createClass({
         this.setState({show:true});
     },
     shareLinkContent(contentURL, contentDescription, contentTitle, imageURL){
+        var self = this;
         var linkContent = new FBSDKShareLinkContent(contentURL, contentDescription, contentTitle, imageURL);
         FBSDKShareDialog.setContent(linkContent);
         FBSDKShareDialog.validateWithError((error) => {
             if (!error) {
                 FBSDKShareDialog.show((sError, result) => {
                     if (!sError) {
-                        console.log('shared ok.');
+                        if(result.postId) {
+                            console.log('shared ok.');
+                            self.onCancel();
+                        }
                     } else {
                         console.log('shared failed.');
                     }
                 });
+            }
+        });
+    },
+    componentDidMount(){
+        var self = this;
+        NativeAppEventEmitter.addListener('WeChat_Resp', (resp)=> {
+            if (resp.errCode == 0 && resp.type == 'SendMessageToWX.Resp') {
+                if(self.isMounted()) {
+                    self.onCancel();
+                }
             }
         });
     },
@@ -126,20 +140,20 @@ var Detail = React.createClass({
         if (shareInfo) {
             if (mode == 'wechat') {
                 NativeModules.WeChatAPI.shareLinkToTimeLine(
-                    'http://arts.things.buzz/share/'
-                    + `${this.props.extag}-${this.props.refImageId}-${RealmRepo.Locale().displayLang}.html`,
+                    'http://arts.things.buzz/Share.html?'
+                    + `exTag=${this.props.extag}&refImageId=${this.props.refImageId}&locale=${RealmRepo.Locale().displayLang}`,
                     shareInfo.imageUrl,
-                    'Arts.Buzz' + '/' + shareInfo.exTitle + '/' + shareInfo.title,
+                    shareInfo.title + '@' + shareInfo.exTitle,
                     null, ()=> {
                     }
                 );
             }
             else if (mode == 'facebook') {
                 this.shareLinkContent(
-                    'http://arts.things.buzz/share/'
-                    + `${this.props.extag}-${this.props.refImageId}-${RealmRepo.Locale().displayLang}.html`,
+                    'http://arts.things.buzz/Share.html?'
+                    + `exTag=${this.props.extag}&refImageId=${this.props.refImageId}&locale=${RealmRepo.Locale().displayLang}`,
                     '',
-                    'Arts.Buzz' + '/' + shareInfo.exTitle + '/' + shareInfo.title,
+                    shareInfo.title + '@' + shareInfo.exTitle,
                     shareInfo.imageUrl
                 );
             }
@@ -167,16 +181,21 @@ var Detail = React.createClass({
                         (<ActionSheet.Button
                             onPress={()=>{this.shareHandle('facebook');}}>
                             <AweIcon name={'facebook-square'} size={38} color="#00BFFF"/>
+                            <Text style={{fontSize:20,fontFamily:'TrebuchetMS'}}>{RealmRepo.getLocaleValue('lbl_share_to_facebook')}</Text>
                         </ActionSheet.Button>)
                         : null
                     }
                     {this.state.wcEnabled ?
                         (<ActionSheet.Button
                             onPress={()=>{this.shareHandle('wechat');}}>
-                            <AweIcon name={'wechat'} size={35} color="#B8E986"/>
+                            <AweIcon name={'wechat'} size={28} color="#B8E986"/>
+                            <Text style={{fontSize:20,fontFamily:'TrebuchetMS'}}>{RealmRepo.getLocaleValue('lbl_share_to_wechat')}</Text>
                         </ActionSheet.Button>)
                         : null
                     }
+                    <ActionSheet.Button>
+                        {RealmRepo.getLocaleValue('lbl_share')}
+                    </ActionSheet.Button>
                 </ActionSheet>
             </View>
         );
@@ -205,7 +224,7 @@ var ToolBar = React.createClass({
     getInitialState(){
         let favExists = RealmRepo.favoriteExists(this.props.extag, this.props.refImageId, this.props.refAudioId);
         return {
-            icon: favExists ? 'love' : 'icon_love',
+            icon: favExists ? 'liked' : 'favorite',
             play: false
         }
     },
@@ -272,8 +291,8 @@ var ToolBar = React.createClass({
         return (
             <View style={styles.menu}>
                 <Button onPress={this.releaseThenPop}>
-                    <Image source={{uri:"icon_back"}}
-                           style={{width: 20, height: 30}}/>
+                    <Image source={{uri:"back"}}
+                           style={{width: 35, height: 35}}/>
                 </Button>
                 <View style={{
                         width:Dimensions.get('window').width-50,
@@ -285,38 +304,42 @@ var ToolBar = React.createClass({
                     { this.props.sharedEnabled ?
                         (
                             <Button onPress={this.props.openSheet}>
-                                <Icon name="share" size={35} color="#fff"/>
+                                <Image source={{uri:"share"}}
+                                       style={{width: 27, height: 40}}/>
                             </Button>
                         ) : null
                     }
 
                     {this.state.play ?
                         (<Button onPress={this.pause}>
-                            <Icon name={'pause-circle-outline'} size={35} color="#fff"/>
+                            <Image source={{uri:"pause"}}
+                                   style={{width: 35, height: 35}}/>
                         </Button>):
                         (<Button onPress={this.play}>
-                            <Icon name={'play-circle-outline'} size={35} color="#fff"/>
+                            <Image source={{uri:"play"}}
+                                   style={{width: 35, height: 35}}/>
                         </Button>)
                     }
                     <Button onPress={this.replay}>
-                        <Icon name="replay" size={35} color="#fff"/>
+                        <Image source={{uri:"replay"}}
+                               style={{width: 35, height: 35}}/>
                     </Button>
                     <Button onPress={()=>{
-                            if(this.state.icon == 'icon_love'){
+                            if(this.state.icon == 'favorite'){
                                 RealmRepo.writeFavorite(this.props.extag, this.props.refImageId, this.props.refAudioId,()=>{
                                     this.eventEmitter('emit', 'favChange');
-                                    this.setState({icon:'love'});
+                                    this.setState({icon:'liked'});
                                 });
                             }
                             else{
                                 RealmRepo.deleteFavorite(this.props.extag, this.props.refImageId, this.props.refAudioId,()=>{
                                     this.eventEmitter('emit', 'favChange');
-                                    this.setState({icon:'icon_love'});
+                                    this.setState({icon:'favorite'});
                                 });
                             }
                         }}>
                         <Image source={{uri:this.state.icon}}
-                               style={{width: 30, height: 30}}/>
+                               style={{width: 35, height: 35}}/>
                     </Button>
                 </View>
             </View>

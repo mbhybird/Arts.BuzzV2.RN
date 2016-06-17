@@ -7,12 +7,14 @@ const {
     StyleSheet,
     Text,
     View,
-    TouchableWithoutFeedback,
+    TouchableWithoutFeedback
     } = React;
 
 import { RadioButtons, SegmentedControls } from 'react-native-radio-buttons';
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RealmRepo = require("./RealmRepo.js");
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import {Actions} from "react-native-router-flux";
 
 var SettingItems = React.createClass({
     mixins:[EventEmitterMixin],
@@ -40,10 +42,28 @@ var SettingItems = React.createClass({
         return (<ScrollView style={{
       backgroundColor: '#eeeeee'
     }}>
+            {this.renderHelp()}
             {this.renderSegmentControlClone()}
             {this.renderDisplayCheckList()}
             {this.renderAudioCheckList()}
         </ScrollView>);
+    },
+    renderHelp(){
+        return (
+            <TouchableWithoutFeedback onPress={Actions.help}>
+                <View style={{
+                    marginTop: 1,
+                    paddingTop: 10,
+                    paddingLeft: 15,
+                    paddingBottom: 10,
+                    backgroundColor: 'white',
+                    flexDirection: 'row'
+                }}>
+                    <Text style={{fontSize:16}}>{RealmRepo.getLocaleValue('lbl_help')}</Text>
+                    <Icon name="help" size={18} color="#B8E986"/>
+                </View>
+            </TouchableWithoutFeedback>
+        );
     },
     renderAudioCheckList() {
         const options = [
