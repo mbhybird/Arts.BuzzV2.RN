@@ -3,7 +3,7 @@
  */
 
 var React = require('react-native');
-var { StyleSheet, View,Text,Image,Dimensions,WebView,NativeModules,NativeAppEventEmitter } = React;
+var { StyleSheet, View,Text,Image,Dimensions,WebView,NativeModules,NativeAppEventEmitter,Alert} = React;
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 var Sound = require('react-native-sound');
@@ -53,31 +53,40 @@ RNSound.m
 */
 
 var Detail = React.createClass({
-    getInitialState(){
-        var s = new Sound(this.props.audioPath + '', null, (e) => {
-            if (e) {
-                console.log('error', e);
-            } else {
-                // Get properties of the player instance
-                //console.log('duration', s.getDuration());
-                //console.log('volume: ' + s.getVolume());
-                //console.log('pan: ' + s.getPan());
-                //console.log('loops: ' + s.getNumberOfLoops());
+    mixins:[EventEmitterMixin],
+    initSound(audioPath){
+        if(audioPath) {
+            let s = new Sound(audioPath, null, (e) => {
+                if (e) {
+                    console.log('error', e);
+                } else {
+                    // Get properties of the player instance
+                    //console.log('duration', s.getDuration());
+                    //console.log('volume: ' + s.getVolume());
+                    //console.log('pan: ' + s.getPan());
+                    //console.log('loops: ' + s.getNumberOfLoops());
 
-                // Position the sound to the full right in a stereo field
-                s.setPan(0);
+                    // Position the sound to the full right in a stereo field
+                    s.setPan(0);
 
-                // Reduce the volume by half
-                //s.setVolume(0.5);
+                    // Reduce the volume by half
+                    //s.setVolume(0.5);
 
-                // Seek to a specific point in seconds
-                //s.setCurrentTime(2.5);
+                    // Seek to a specific point in seconds
+                    //s.setCurrentTime(2.5);
 
-                // Get the current playback point in seconds
-                //s.getCurrentTime((seconds) => console.log('at ' + seconds));
-            }
-        });
+                    // Get the current playback point in seconds
+                    //s.getCurrentTime((seconds) => console.log('at ' + seconds));
+                }
+            });
 
+            return s;
+        }
+        else {
+            return null;
+        }
+    },
+    initShare(){
         var sharedEnabled = false;
         var fbEnabled = false;
         var wcEnabled = false;
@@ -92,12 +101,14 @@ var Detail = React.createClass({
                 sharedEnabled = true;
             }
         }
+
+        return {fbEnabled, wcEnabled, sharedEnabled};
+    },
+    getInitialState(){
         return {
-            sound: s,
+            sound: this.initSound(this.props.audioPath),
             show: false,
-            fbEnabled: fbEnabled,
-            wcEnabled: wcEnabled,
-            sharedEnabled: sharedEnabled
+            ...this.initShare()
         }
     },
     onCancel() {
@@ -105,6 +116,15 @@ var Detail = React.createClass({
     },
     onOpen() {
         this.setState({show:true});
+    },
+    shareOK(){
+        Alert.alert(
+            RealmRepo.getLocaleValue('msg_dlg_title_tips'),
+            RealmRepo.getLocaleValue('lbl_share_ok'),
+            [
+                {text: RealmRepo.getLocaleValue('msg_dlg_ok')}
+            ]
+        );
     },
     shareLinkContent(contentURL, contentDescription, contentTitle, imageURL){
         var self = this;
@@ -117,6 +137,7 @@ var Detail = React.createClass({
                         if(result.postId) {
                             console.log('shared ok.');
                             self.onCancel();
+                            self.shareOK();
                         }
                     } else {
                         console.log('shared failed.');
@@ -129,10 +150,16 @@ var Detail = React.createClass({
         var self = this;
         NativeAppEventEmitter.addListener('WeChat_Resp', (resp)=> {
             if (resp.errCode == 0 && resp.type == 'SendMessageToWX.Resp') {
-                if(self.isMounted()) {
-                    self.onCancel();
-                }
+                self.onCancel();
+                self.shareOK();
             }
+        });
+
+        this.eventEmitter('on', 'refreshDetail', (params)=> {
+            this.setState({sound: this.initSound(params.audioPath),...this.initShare()});
+            this.eventEmitter('emit', 'autoPlay');
+            Actions.refresh(params);
+            this.eventEmitter('emit', 'refreshFavState');
         });
     },
     shareHandle(mode){
@@ -204,22 +231,35 @@ var Detail = React.createClass({
 
 var ToolBar = React.createClass({
     mixins:[EventEmitterMixin],
-    componentDidMount(){
-        this.eventEmitter('on', 'detailClose', ()=> {
-            this.releaseThenPop();
-        });
-    },
-    componentWillMount(){
-        RNS.headsetDeviceAvailable((v)=>{
-            if(v) {
+    autoPlay(){
+        RNS.headsetDeviceAvailable((v)=> {
+            if (v) {
                 let user = RealmRepo.getUser();
-                if(user) {
+                if (user) {
                     if (user.autoPlay == 1) {
                         this.replay();
+                    }
+                    else {
+                        this.setState({play: false});
                     }
                 }
             }
         });
+    },
+    componentDidMount(){
+        this.eventEmitter('on', 'detailClose', ()=> {
+            this.releaseThenBack();
+        });
+        this.eventEmitter('on', 'autoPlay', ()=> {
+            this.autoPlay();
+        });
+        this.eventEmitter('on', 'refreshFavState', ()=> {
+            let favExists = RealmRepo.favoriteExists(this.props.extag, this.props.refImageId, this.props.refAudioId);
+            this.setState({icon: favExists ? 'liked' : 'favorite'});
+        });
+    },
+    componentWillMount(){
+        this.autoPlay();
     },
     getInitialState(){
         let favExists = RealmRepo.favoriteExists(this.props.extag, this.props.refImageId, this.props.refAudioId);
@@ -228,11 +268,16 @@ var ToolBar = React.createClass({
             play: false
         }
     },
-    releaseThenPop(){
+    releaseThenBack(){
         try {
             this.release();
-            Actions.pop();
-        }catch(ex) {
+            if(this.props.from == 'leftMenuBall'){
+                Actions.ball();
+            }
+            else if(this.props.from == 'leftMenuCatalog') {
+                Actions.home();
+            }
+        } catch (ex) {
             console.log(ex);
         }
     },
@@ -290,7 +335,7 @@ var ToolBar = React.createClass({
     render(){
         return (
             <View style={styles.menu}>
-                <Button onPress={this.releaseThenPop}>
+                <Button onPress={this.releaseThenBack}>
                     <Image source={{uri:"back"}}
                            style={{width: 35, height: 35}}/>
                 </Button>

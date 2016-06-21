@@ -38,6 +38,7 @@ var modalState = false;
 
 // The BeaconView
 var BeaconView = React.createClass({
+    mixins:[EventEmitterMixin],
     render: function() {
         try {
             let beacon = RealmRepo.getBeaconInfo(this.props.major, this.props.minor);
@@ -109,7 +110,8 @@ var BeaconView = React.createClass({
                                 mode: 'auto',
                                 extag: exTag,
                                 refImageId: refImageId,
-                                refAudioId: refAudioId
+                                refAudioId: refAudioId,
+                                from: 'leftMenuBall'
                             };
 
                             if (state == 1) {
@@ -125,14 +127,16 @@ var BeaconView = React.createClass({
 
                         return (
                             <TouchableOpacity onPress={()=>{
-                                    Actions.detail({
+                                    Actions.detail();
+                                    this.eventEmitter('emit','refreshDetail',{
                                         extag: exTag,
                                         refImageId: refImageId,
                                         refAudioId: refAudioId,
                                         desc: desc,
                                         audioPath: audioPath,
                                         baseUrl: baseUrl,
-                                        mode: 'manual'
+                                        mode: 'manual',
+                                        from: 'leftMenuBall'
                                     });
                                 }}>
                                 <View style={styles.row}>
@@ -209,7 +213,8 @@ var BeaconList = React.createClass({
                     if (lastBeaconId == "") {
                         if (History.lastPlayBeaconId != headState.beaconId) {
                             modalState = true;
-                            Actions.detail({...openHeadState});
+                            Actions.detail();
+                            this.eventEmitter('emit','refreshDetail',openHeadState);
                             if (user) {
                                 RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
                             }
@@ -234,7 +239,8 @@ var BeaconList = React.createClass({
                                 this.setTimeout(()=> {
                                     //then open
                                     modalState = true;
-                                    Actions.detail({...openHeadState});
+                                    Actions.detail();
+                                    this.eventEmitter('emit','refreshDetail',openHeadState);
                                     if (user) {
                                         RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
                                     }
@@ -333,7 +339,7 @@ var styles = StyleSheet.create({
         width:deviceScreen.width
     },
     headerText:{
-        fontSize: 30,
+        fontSize: 28,
         color:'white',
         fontFamily:'Arial-BoldMT',
         textAlign:'center'

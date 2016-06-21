@@ -111,7 +111,7 @@ NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];
 NSString *appVersion = [infoDictionary objectForKey:@"CFBundleShortVersionString"];
 NSString *appBuild = [infoDictionary objectForKey:@"CFBundleVersion"];
 label.text = [NSString stringWithFormat:@"VERSION:%@.%@", appVersion, appBuild];
-UIFont *font = [UIFont fontWithName:@"Arial" size:20.0f];
+UIFont *font = [UIFont fontWithName:@"Arial" size:18.0f];
 label.font = font;
 label.textAlignment = NSTextAlignmentCenter;
 label.frame = CGRectMake(0, mainScreenBoundsSize.height-50, mainScreenBoundsSize.width, 50);
@@ -349,9 +349,12 @@ var App = React.createClass({
                         <Scene key="help">
                             <Scene key="helpModal" component={Help} hideNavBar={true}/>
                         </Scene>
-                    </Scene>
-                    <Scene key="detail">
-                        <Scene key="detailModal" component={Detail} hideNavBar={true}/>
+                        <Scene key="helpForBall">
+                            <Scene key="helpForBallModal" component={Help} hideNavBar={true}/>
+                        </Scene>
+                        <Scene key="detail">
+                            <Scene key="detailModal" component={Detail} hideNavBar={true}/>
+                        </Scene>
                     </Scene>
                     {/*
                     <Scene key="customView">

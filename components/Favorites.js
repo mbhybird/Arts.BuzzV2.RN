@@ -67,14 +67,16 @@ var Favorites = React.createClass({
      */
         _onPress(rowData) {
         //console.log(rowData.key + ' pressed');
-        Actions.detail({
+        Actions.detail();
+        this.eventEmitter('emit','refreshDetail',{
             extag: rowData.extag,
             refImageId: rowData.refImageId,
             refAudioId: rowData.refAudioId,
             desc: rowData.desc,
             audioPath: rowData.audioPath,
             baseUrl: rowData.baseUrl,
-            mode: 'manual'
+            mode: 'manual',
+            from: this.props.from
         });
     },
 
@@ -105,13 +107,13 @@ var Favorites = React.createClass({
                     >
                     <View style={{
                             flexDirection:'row',
-                            justifyContent:'center',
-                            alignItems:'center',
+                            justifyContent:'space-between',
+                            alignItems:'center'
                         }}>
                         <Image source={{uri:'love'}}
-                               style={{width: 25, height: 25, margin:5}}/>
+                               style={{width: 20, height: 20, margin:5}}/>
                         <View style={{flexWrap:'wrap',width:225}}>
-                            <Text style={{fontSize:16,fontWeight:'300'}}>{rowData.title}</Text>
+                            <Text style={{fontSize:18,fontWeight:'300'}}>{rowData.title}</Text>
                         </View>
                     </View>
                 </TouchableOpacity>
@@ -350,41 +352,41 @@ var customStyles = {
         height: 50,
         backgroundColor: '#fff',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'center'
     },
     actionsLabel: {
         fontSize: 20,
-        color: '#007aff',
+        color: '#007aff'
     },
     paginationView: {
         height: 44,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFF',
+        backgroundColor: '#FFF'
     },
     defaultView: {
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 20
     },
     defaultViewTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        marginBottom: 15,
+        marginBottom: 15
     },
     row: {
         padding:3,
         margin:3,
-        height:50,
+        height:40,
         alignItems:'stretch'
     },
     header: {
         backgroundColor: '#50a4ff',
-        padding: 10,
+        padding: 10
     },
     headerTitle: {
-        color: '#fff',
-    },
+        color: '#fff'
+    }
 };
 
 var screenStyles = {

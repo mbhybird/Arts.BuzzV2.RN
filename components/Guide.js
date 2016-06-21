@@ -1,9 +1,10 @@
-import React, {Component,View,Text,StyleSheet,Dimensions,Image,TouchableOpacity,TouchableHighlight} from "react-native"
+import React, {Component,View,Text,StyleSheet,Dimensions,Image,TouchableOpacity,TouchableHighlight,TouchableWithoutFeedback} from "react-native"
 import {Actions} from 'react-native-router-flux'
 var Swiper = require('react-native-swiper');
 const DeviceInfo = require('react-native-device-info');
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RealmRepo = require("./RealmRepo.js");
+var Screen = Dimensions.get('window');
 
 var Guide = React.createClass({
     mixins:[EventEmitterMixin],
@@ -37,41 +38,74 @@ var Guide = React.createClass({
 });
 
 var SwiperComp = React.createClass({
-    mixins: [EventEmitterMixin],
-    _onMomentumScrollEnd: function (e, state, context) {
-        //this.eventEmitter('emit','startToExp',state.index);
-    },
+    mixins:[EventEmitterMixin],
     render: function () {
+        let locale = RealmRepo.Locale().displayLang.replace('pt', 'en');
         var guideList = [
-            {imageUri: `pag01_${RealmRepo.Locale().displayLang}`},
-            {imageUri: `pag02_${RealmRepo.Locale().displayLang}`}
+            {imageUri: `h1_${locale}`},
+            {imageUri: `h2_${locale}`},
+            {imageUri: `h3_${locale}`},
+            {imageUri: `h4_${locale}`},
+            {imageUri: `h5_${locale}`},
+            {imageUri: `h6_${locale}`}
         ];
-        var guideView = guideList.map((item, index) => {
-            return (
-                <TouchableHighlight onPress={()=>{
-                    if(index==1){
+        var closeView = (
+            <View style={{
+                        position: 'absolute',
+                        top: 5,
+                        right: 5
+                    }}>
+                <TouchableWithoutFeedback onPress={()=>{
                         RealmRepo.updateFirstTimeLogin((res)=>{
                             Actions.home({user:res.user});
                         });
+                    }}>
+                    <Image source={{uri:'close'}} style={{width:30,height:30}}/>
+                </TouchableWithoutFeedback>
+            </View>
+        );
+
+        var guideView = guideList.map((item, index) => {
+            return (
+                <View key={index}>
+                    <Image source={{
+                                uri:'icon_logo',
+                                resizeMode:'contain',
+                                height:Screen.height,
+                                width:Screen.width
+                                }}
+                           style={{opacity:0.5}}>
+                    </Image>
+                    {index > 0 ?
+                        (<Image
+                            source={{
+                                height:Screen.height-30,
+                                width:Screen.width-20,
+                                uri:item.imageUri,
+                                resizeMode:'contain'
+                                }}
+                            style={{position:'absolute',top:15,left:10}}/>) :
+                        (
+                            <Image
+                                source={{
+                                height:Screen.height-100,
+                                width:Screen.width-20,
+                                uri:item.imageUri,
+                                resizeMode:'contain'
+                                }}
+                                style={{position:'absolute',top:50,left:10}}/>
+                        )
                     }
-                }} key={index}>
-                    <Image
-                        source={{
-                    height:Dimensions.get('window').height,
-                    uri:item.imageUri,
-                    sizeMode:'stretch'
-                }}/>
-                </TouchableHighlight>
+                    {closeView}
+                </View>
             );
         });
 
         return (
             <View>
-                <Swiper height={Dimensions.get('window').height}
+                <Swiper height={Screen.height}
                         showsButtons={false}
-                        loop={false}
-                        onMomentumScrollEnd={this._onMomentumScrollEnd}
-                    >
+                        loop={false}>
                     {guideView}
                 </Swiper>
             </View>

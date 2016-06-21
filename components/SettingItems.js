@@ -50,19 +50,37 @@ var SettingItems = React.createClass({
     },
     renderHelp(){
         return (
-            <TouchableWithoutFeedback onPress={Actions.help}>
-                <View style={{
-                    marginTop: 1,
-                    paddingTop: 10,
-                    paddingLeft: 15,
-                    paddingBottom: 10,
-                    backgroundColor: 'white',
-                    flexDirection: 'row'
+            <View style={{
+                marginTop: 1,
+                paddingTop: 10,
+                paddingLeft: 15,
+                paddingBottom: 10,
+                backgroundColor: 'white',
+                flexDirection: 'row',
+                overflow:'hidden'
+            }}>
+                <TouchableWithoutFeedback onPress={()=>{
+                    if(this.props.name == 'leftMenuCatalog'){
+                        Actions.help();
+                    }else if(this.props.name == 'leftMenuBall'){
+                        Actions.helpForBall();
+                    }
                 }}>
-                    <Text style={{fontSize:16}}>{RealmRepo.getLocaleValue('lbl_help')}</Text>
-                    <Icon name="help" size={18} color="#B8E986"/>
-                </View>
-            </TouchableWithoutFeedback>
+                    <View style={{
+                        width:70,
+                        borderRadius:5,
+                        backgroundColor:'#007AFF',
+                        flexDirection:'row',
+                        height:30,
+                        justifyContent:'center',
+                        alignItems:'center'
+                    }}>
+                        <Text
+                            style={{fontSize:16,color:'white',padding:3}}>{RealmRepo.getLocaleValue('lbl_help')}</Text>
+                        <Icon name="help" size={18} color="#B8E986"/>
+                    </View>
+                </TouchableWithoutFeedback>
+            </View>
         );
     },
     renderAudioCheckList() {

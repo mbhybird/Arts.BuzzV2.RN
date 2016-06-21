@@ -374,6 +374,9 @@ var Profile = React.createClass({
                         progressBackgroundColor: '#003e82'
                       }}
                     />
+                    <View style={screenStyles.descView}>
+                        <Text style={screenStyles.descText}>{RealmRepo.getLocaleValue('lbl_profile_desc')}</Text>
+                    </View>
             </View>
         );
     }
@@ -441,6 +444,17 @@ var screenStyles = {
         fontSize: 30,
         fontWeight:'bold',
         marginTop: 12
+    },
+    descView: {
+        height: 50,
+        paddingBottom: 20,
+        backgroundColor: '#698686',
+        justifyContent: 'flex-end',
+        alignItems: 'center'
+    },
+    descText: {
+        color: 'white',
+        fontSize: 16
     }
 };
 

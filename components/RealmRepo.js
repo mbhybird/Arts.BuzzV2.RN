@@ -278,13 +278,21 @@ ResourcesInit.push({key: 'lbl_share',locale:'pt', value:'Partilhar'});
 ResourcesInit.push({key: 'lbl_share',locale:'cn', value:'分享'});
 ResourcesInit.push({key: 'lbl_share',locale:'tw', value:'分享'});
 ResourcesInit.push({key: 'lbl_help',locale:'en', value:'Help'});
-ResourcesInit.push({key: 'lbl_help',locale:'pt', value:'Socorro'});
+ResourcesInit.push({key: 'lbl_help',locale:'pt', value:'Ajuda'});
 ResourcesInit.push({key: 'lbl_help',locale:'cn', value:'帮助'});
 ResourcesInit.push({key: 'lbl_help',locale:'tw', value:'幫助'});
 ResourcesInit.push({key: 'lbl_skip',locale:'en', value:'Skip'});
 ResourcesInit.push({key: 'lbl_skip',locale:'pt', value:'Pular'});
 ResourcesInit.push({key: 'lbl_skip',locale:'cn', value:'跳过'});
 ResourcesInit.push({key: 'lbl_skip',locale:'tw', value:'跳過'});
+ResourcesInit.push({key: 'lbl_profile_desc',locale:'en', value:'*Once connected to can share the paintings on WeChat or Facebook'});
+ResourcesInit.push({key: 'lbl_profile_desc',locale:'pt', value:'*Uma vez conectado ao abate ret e pintura filho que WeChat ou Facebook'});
+ResourcesInit.push({key: 'lbl_profile_desc',locale:'cn', value:'*连接后可分享画作到微信或脸书'});
+ResourcesInit.push({key: 'lbl_profile_desc',locale:'tw', value:'*連接後可分享畫作到微信或臉書'});
+ResourcesInit.push({key: 'lbl_share_ok',locale:'en', value:'Share successful'});
+ResourcesInit.push({key: 'lbl_share_ok',locale:'pt', value:'Compartilhar sucesso'});
+ResourcesInit.push({key: 'lbl_share_ok',locale:'cn', value:'分享成功'});
+ResourcesInit.push({key: 'lbl_share_ok',locale:'tw', value:'分享成功'});
 
 const PORT = 81;
 
