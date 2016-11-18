@@ -54,7 +54,7 @@ var BallView = React.createClass({
                         <Image source={{uri:'menu'}}
                                style={{width: 50, height: 50}}/>
                     </Button>
-                    <Button onPress={Actions.home}>
+                    <Button onPress={()=>{this.eventEmitter('emit','action','home');Actions.home();}}>
                         <Image source={{uri:'back'}}
                                style={{width: 50, height: 50}}/>
                     </Button>

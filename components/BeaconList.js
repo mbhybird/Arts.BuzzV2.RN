@@ -10,6 +10,7 @@ var {
     View,
     ListView,
     DeviceEventEmitter,
+    NativeModules,
     Image,
     Dimensions,
     TouchableOpacity
@@ -27,6 +28,9 @@ import {Actions} from "react-native-router-flux";
 import Detail from './Detail'
 var deviceScreen = Dimensions.get('window');
 var _ = require('lodash');
+var Sound = require('react-native-sound');
+const RNS = NativeModules.RNSound;
+import MyCustView from './MyCustView'
 
 // Create our dataSource which will be displayed in the data list
 var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -35,6 +39,8 @@ var headState = {};
 var openHeadState = {};
 var lastBeaconId = "";
 var modalState = false;
+var s = null;
+var orderState = null;
 
 // The BeaconView
 var BeaconView = React.createClass({
@@ -60,6 +66,13 @@ var BeaconView = React.createClass({
                         var refImageId = content.contentid;
                         var refAudioId = -1;
                         var exTag = beacon.extag;
+                        var fontSize = 20;
+                        var lineHeight = 30;
+                        var locale = RealmRepo.Locale().displayLang;
+                        if(locale=='en' || locale=='pt') {
+                            fontSize = 16;
+                            lineHeight = 20;
+                        }
 
                         placeHolder = '{' + content.clientpath + content.filename + '}';
                         baseUrl = RNFS.DocumentDirectoryPath + content.clientpath;
@@ -139,37 +152,33 @@ var BeaconView = React.createClass({
                                         from: 'leftMenuBall'
                                     });
                                 }}>
-                                <View style={styles.row}>
-                                    <View style={styles.imageView}>
-                                        <Image source={{
+                                <View style={[styles.row,styles.imageView]}>
+                                    {/*
+                                    <Image source={{
                                         uri:imageUri,
-                                        width:150,
-                                        height:100
+                                        width:deviceScreen.width,
+                                        height:120
                                         }}
-                                               resizeMode={Image.resizeMode.cover}
-                                            />
-                                    </View>
-                                    <View style={[styles.descView,{backgroundColor:bgColor}]}>
-                                        {beacon.displayname ?
-                                            (<Text style={styles.descText}>
-                                                {beacon.displayname}
-                                            </Text>)
-                                            : null
-                                        }
-                                        {title ?
-                                            (<Text style={styles.descText}>
-                                                {title}
-                                            </Text>)
-                                            : null
-                                        }
-                                        {artist ?
-                                            (<Text style={styles.descText}>
-                                                {artist}
-                                            </Text>)
-                                            : null
-                                        }
-                                    </View>
+                                           resizeMode={Image.resizeMode.stretch}
+                                        />*/}
+                                    <MyCustView style={{width:deviceScreen.width-10,height:140}}
+                                                textHeight={36}
+                                                textFontSize={fontSize}
+                                                textFontFamily={'Arial-BoldMT'}
+                                                textContent={title}
+                                                cropImageWidth={deviceScreen.width-10}
+                                                cropImageHeight={140}
+                                                srcImagePath={imageUri}/>
                                 </View>
+                                {/*
+                                <View style={[styles.row,styles.descView,{backgroundColor:bgColor}]}>
+                                    {title ?
+                                        (<Text style={[styles.descText,{fontSize:fontSize,lineHeight:lineHeight}]}>
+                                            {title}
+                                        </Text>)
+                                        : null
+                                    }
+                                </View>*/}
                             </TouchableOpacity>
                         );
                     }
@@ -199,6 +208,7 @@ var BeaconList = React.createClass({
         };
     },
     componentDidMount(){
+        /*
         this.setInterval(()=> {
             headState = beaconState[0];
             if (!modalState) {
@@ -212,6 +222,7 @@ var BeaconList = React.createClass({
                     //init
                     if (lastBeaconId == "") {
                         if (History.lastPlayBeaconId != headState.beaconId) {
+                            this.stopSound();
                             modalState = true;
                             Actions.detail();
                             this.eventEmitter('emit','refreshDetail',openHeadState);
@@ -238,6 +249,7 @@ var BeaconList = React.createClass({
                             if (History.lastPlayBeaconId != headState.beaconId) {
                                 this.setTimeout(()=> {
                                     //then open
+                                    this.stopSound();
                                     modalState = true;
                                     Actions.detail();
                                     this.eventEmitter('emit','refreshDetail',openHeadState);
@@ -273,23 +285,180 @@ var BeaconList = React.createClass({
 
                 }
             }
-        }, 500);
+        }, 500);*/
+    },
+    log:function(user,state) {
+        //state out-1,in-0
+        if(user){
+            if(History.playingId) {
+                RealmRepo.addLog(user.userId, History.playingId, state, History.lastAccessExTag, ()=> {});
+                //console.log(user.userId,History.playingId,state,History.lastAccessExTag);
+            }
+        }
+    },
+    triggerPlay:function(major,minor) {
+        if (orderState == null) {
+            orderState = {
+                major: major,
+                minor: minor,
+                createTime: new Date().getTime()
+            };
+        }
+        else {
+            if (orderState.major == major && orderState.minor == minor) {
+                var now = new Date().getTime();
+                var duration = now - orderState.createTime;
+                if (duration >= 3000) {
+                    if (History.playingId != major + '-' + minor) {
+                        let beacon = RealmRepo.getBeaconInfo(major, minor);
+                        if (beacon) {
+                            let content = beacon.triggercontent[0].content;
+                            let audio = beacon.triggercontent[1];
+                            if (content) {
+                                let imageUri = RNFS.DocumentDirectoryPath + content.clientpath + content.filename;
+                                if (imageUri) {
+                                    var desc, baseUrl, audioPath, placeHolder;
+                                    var refImageId = content.contentid;
+                                    var refAudioId = -1;
+                                    var exTag = beacon.extag;
+
+                                    placeHolder = '{' + content.clientpath + content.filename + '}';
+                                    baseUrl = RNFS.DocumentDirectoryPath + content.clientpath;
+                                    desc = content["description_" + RealmRepo.Locale().displayLang].replace(placeHolder, content.filename);
+                                    if (audio) {
+                                        let audioContent = audio.content;
+                                        if (audioContent) {
+                                            refAudioId = audioContent.contentid;
+                                            audioPath = RNFS.DocumentDirectoryPath
+                                            + audioContent.clientpath
+                                            + audioContent.filename.replace(".mp3", `_${RealmRepo.Locale().voiceLang}.mp3`);
+                                        }
+
+                                        /*
+                                        if (audioPath) {
+                                            this.stopSound();
+                                            this.playSound(audioPath);
+                                        }*/
+
+                                        Actions.detail();
+                                        this.eventEmitter('emit', 'refreshDetail', {
+                                            extag: exTag,
+                                            refImageId: refImageId,
+                                            refAudioId: refAudioId,
+                                            desc: desc,
+                                            audioPath: audioPath,
+                                            baseUrl: baseUrl,
+                                            mode: 'auto',
+                                            from: 'leftMenuBall'
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        //out
+                        let user = RealmRepo.getUser();
+                        this.log(user, 1);
+                        //current
+                        History.playingId = major + '-' + minor;
+                        //in
+                        this.log(user, 0);
+                    }
+                }
+            }
+            else {
+                orderState = {
+                    major: major,
+                    minor: minor,
+                    createTime: new Date().getTime()
+                };
+            }
+        }
     },
     componentWillMount: function() {
         this.eventEmitter('on', 'beaconCountChanged', (orderList)=> {
-            if (orderList) {
-                this.setState({
-                    dataSource: ds.cloneWithRows(orderList)
-                });
+            this.setTimeout(()=> {
+                if (orderList) {
+                    this.setState({
+                        dataSource: ds.cloneWithRows(orderList)
+                    });
+
+                    if (orderList.length > 0) {
+                        this.triggerPlay(orderList[0].major, orderList[0].minor);
+                    }
+                    else {
+                        //this.stopSound();
+                        let user = RealmRepo.getUser();
+                        //out
+                        this.log(user,1);
+                        //History.playingId = null;
+                    }
+                }
+                else {
+                    this.setState({
+                        dataSource: ds.cloneWithRows([])
+                    });
+                }
+            }, 500);
+        });
+
+        this.eventEmitter('on', 'drawerOpenFromBallView', ()=> {
+            this.setTimeout(()=> {
+                //this.stopSound();
+                let user = RealmRepo.getUser();
+                //out
+                this.log(user,1);
+                History.playingId = null;
+            }, 1000);
+        });
+
+        this.eventEmitter('on', 'action', (param)=> {
+            if (param == 'home') {
+                this.setTimeout(()=> {
+                    //this.stopSound();
+                    let user = RealmRepo.getUser();
+                    //out
+                    this.log(user,1);
+                    History.playingId = null;
+                }, 1000);
             }
-            else {
-                this.setState({
-                    dataSource: ds.cloneWithRows([])
+        });
+    },
+    playSound:function(audioPath) {
+        s = new Sound(audioPath, null, (e) => {
+            if (e) {
+                console.log('error', e);
+            } else {
+                RNS.headsetDeviceAvailable((v)=> {
+                    let user = RealmRepo.getUser();
+                    if (user) {
+                        if (user.autoPlay == 1) {
+                            if (user.earphonePlay == 1) {
+                                if (v) {
+                                    if (s && s.isLoaded()) {
+                                        s.setPan(0);
+                                        s.play();
+                                    }
+                                }
+                            }
+                            else {
+                                if (s && s.isLoaded()) {
+                                    s.setPan(0);
+                                    s.play();
+                                }
+                            }
+                        }
+                    }
                 });
             }
         });
     },
-
+    stopSound:function() {
+        if (s && s.isLoaded()) {
+            s.stop();
+            s.release();
+        }
+    },
     renderRow: function(rowData,sectionID,rowID) {
         return <BeaconView {...rowData} style={styles.row} altRow={rowID%2==0}/>
     },
@@ -299,9 +468,9 @@ var BeaconList = React.createClass({
         if (exMaster) {
             let locale = RealmRepo.Locale().displayLang;
             title = exMaster["title_" + locale];
-            var trimLength = 15;//en or pt
+            var trimLength = 25;//en or pt
             if (locale == 'cn' || locale == 'tw') {
-                trimLength = 8;//cn or tw
+                trimLength = 15;//cn or tw
             }
             if (title.length > trimLength) {
                 title = title.slice(0, trimLength).concat('...');
@@ -333,15 +502,14 @@ var styles = StyleSheet.create({
         backgroundColor: '#698686'
     },
     headerView:{
-        height:60,
+        height:50,
         justifyContent: 'flex-start',
         alignItems: 'center',
         width:deviceScreen.width
     },
     headerText:{
-        fontSize: 28,
+        fontSize: 25,
         color:'white',
-        fontFamily:'Arial-BoldMT',
         textAlign:'center'
     },
     headline: {
@@ -350,25 +518,21 @@ var styles = StyleSheet.create({
     },
     row: {
         flexDirection: 'row',
-        paddingBottom: 5,
-        width:deviceScreen.width
+        width:deviceScreen.width,
+        padding:5
     },
     imageView: {
         borderRadius: 0,
         overflow: 'hidden'
     },
     descView: {
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        width:deviceScreen.width-150,
-        height:100
+        alignItems: 'center',
+        height:36,
+        paddingLeft:2
     },
     descText: {
-        fontSize: 20,
         fontFamily:'Arial-BoldMT',
-        color:'white',
-        lineHeight:30,
-        paddingRight:5
+        color:'white'
     },
     smallText: {
         fontSize: 11

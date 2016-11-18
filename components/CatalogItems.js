@@ -2,23 +2,12 @@
  * Created by NickChung on 4/14/16.
  */
 var React = require('react-native');
-var { StyleSheet, View,Text,Image,Dimensions,WebView,NetInfo } = React;
+var { StyleSheet, View,Text,Image,Dimensions,WebView,NetInfo,Linking } = React;
 var Swiper = require('react-native-swiper');
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RealmRepo = require("./RealmRepo.js");
 const TimerMixin = require('react-timer-mixin');
 const RNFS = require('react-native-fs');
-
-var networkState = false;
-
-NetInfo.isConnected.fetch().then(isConnected => {
-    if(isConnected) {
-        fetch('http://arts.things.buzz/download/')
-            .then((res)=> {
-                networkState = res.ok;
-            });
-    }
-});
 
 var curIndex  = 0;
 var updateCatList = null;
@@ -35,70 +24,79 @@ var SwiperComp = React.createClass({
     mixins:[EventEmitterMixin,TimerMixin],
     getInitialState(){
         return {
-            catalogList: this.getCatalogList()
+            catalogList: this.getDefaultCatalogList()
         }
     },
-    getCatalogList(){
-        var catalogList = [{
+    getDefaultCatalogList(){
+        return [{
             opacity: 0,
             imageUri: 'macaudefault',
             desc: RealmRepo.getLocaleValue('main_about'),
             exTag: 'macaudefault',
-            versionMatch: true
+            versionMatch: true,
+            dateFrom: null
         }];
-
+    },
+    handleReload(){
+        this.setTimeout(
+            () => {
+                if (this.state.catalogList[0] && this.state.catalogList[0].imageUri == 'macaudefault') {
+                    this.setState({catalogList: this.getUpdateCatalogList()});
+                    this.handleReload();
+                }
+                else {
+                    if(this.state.catalogList[0]) {
+                        this.setTimeout(
+                            () => {
+                                this.eventEmitter('emit', 'iconShow', {
+                                    opacity: this.state.catalogList[0].opacity,
+                                    exTag: this.state.catalogList[0].exTag,
+                                    versionMatch: this.state.catalogList[0].versionMatch
+                                });
+                            }
+                            , 500);
+                    }
+                    else{
+                        this.setState({catalogList: this.getDefaultCatalogList()});
+                        this.handleReload();
+                    }
+                }
+            }
+            , 500);
+    },
+    componentWillMount(){
+        this.eventEmitter('on', 'unzipCatalogCompleted', ()=> {
+            this.handleReload();
+        });
+    },
+    getUpdateCatalogList(){
+        var catalogList = [];
         let catalog = RealmRepo.getCatalog();
-
         if (catalog) {
-            catalogList = [];
             catalog.forEach((item)=> {
                 let fileCount = item.fileCount;
                 let contentCount = item.exContent == null
                     ? 0 : (item.exContent.contents == null) ? 0 : item.exContent.contents.length;
 
                 let clientPath = RNFS.DocumentDirectoryPath + item.exMaster.content.clientpath + item.exMaster.content.filename;
-                let serverPath = item.exMaster.content.serverpath;
-                let imagePath = networkState ? serverPath : clientPath;
                 catalogList.push({
                     opacity: (fileCount == contentCount) ? 0 : 100,
-                    imageUri: imagePath,
+                    imageUri: clientPath,
                     desc: item.exMaster["description_" + RealmRepo.Locale().displayLang],
                     exTag: item.extag,
-                    versionMatch: item.localVersion == item.serverVersion
+                    versionMatch: item.localVersion == item.serverVersion,
+                    dateFrom: item.exMaster.datefrom
                 });
             });
         }
 
-        updateCatList =  catalogList;
-        return catalogList;
-    },
-    handleReload(){
-        this.setTimeout(
-            () => {
-                if (this.state.catalogList[0].imageUri == 'macaudefault') {
-                    this.setState({catalogList: this.getCatalogList()});
-                    this.handleReload();
-                }
-                else {
-                    this.setTimeout(
-                        () => {
-                            this.eventEmitter('emit', 'iconShow', {
-                                opacity: this.state.catalogList[0].opacity,
-                                exTag: this.state.catalogList[0].exTag,
-                                versionMatch: this.state.catalogList[0].versionMatch
-                            });
-                        }
-                        , 500);
-                }
-            }
-            , 100);
-    },
-    componentWillMount(){
-        this.handleReload();
+        let sortedCatalog = _.orderBy(catalogList, ['dateFrom'], ['desc']);
+        updateCatList = sortedCatalog;
+        return sortedCatalog;
     },
     componentDidMount(){
         this.eventEmitter('on', 'downloadChanged', ()=> {
-            this.getCatalogList();
+            this.getUpdateCatalogList();
             this.eventEmitter('emit', 'iconShow', {
                 opacity: updateCatList[curIndex].opacity,
                 exTag: updateCatList[curIndex].exTag,
@@ -108,7 +106,7 @@ var SwiperComp = React.createClass({
         });
 
         this.eventEmitter('on', 'localeChanged', ()=> {
-            this.setState({catalogList: this.getCatalogList()});
+            this.setState({catalogList: this.getUpdateCatalogList()});
         });
     },
     _onMomentumScrollEnd: function (e, state, context) {
@@ -124,9 +122,30 @@ var SwiperComp = React.createClass({
 
         curIndex = state.index;
     },
+    onShouldStartLoadWithRequest: function(event) {
+        if(event.url.indexOf('http://')>=0 || event.url.indexOf('https://')>=0){
+            Linking.canOpenURL(event.url).then(supported => {
+                if (supported) {
+                    Linking.openURL(event.url);
+                }
+            });
+            return false;
+        }
+        return true;
+    },
     render: function () {
         let BGWASH = 'rgba(69,86,86,0.01)';
+        let user = RealmRepo.getUser();
+        var appUserId = "";
+        var descHtml = "";
+        if(user) {
+            appUserId = user.userId;
+        }
         let catalogView = this.state.catalogList.map((item, index) => {
+            if(item.desc) {
+                descHtml = item.desc.replace("{appuser}", appUserId);
+                descHtml = descHtml.replace("{locale}", RealmRepo.Locale().displayLang);
+            }
             return (
                 <View key={index} style={{flex:1}}>
                     <Image
@@ -140,8 +159,9 @@ var SwiperComp = React.createClass({
                                 backgroundColor: BGWASH,
                                 height:420
                             }}
-                        source={{html: item.desc}}
+                        source={{html: descHtml}}
                         scrollEnabled={true}
+                        onShouldStartLoadWithRequest={this.onShouldStartLoadWithRequest}
                         />
                 </View>
             );
@@ -153,8 +173,8 @@ var SwiperComp = React.createClass({
                         showsButtons={false}
                         loop={true}
                         onMomentumScrollEnd={this._onMomentumScrollEnd}
-                        dot={<View style={{backgroundColor:'rgba(0,0,0,.2)', width: 5, height: 5,borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3,}} />}
-                        activeDot={<View style={{backgroundColor: '#007aff', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3,}} />}
+                        dot={<View style={{backgroundColor:'rgba(0,0,0,.2)', width: 5, height: 5,borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3}} />}
+                        activeDot={<View style={{backgroundColor: '#007aff', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3}} />}
                         paginationStyle={{
                         top:-(Dimensions.get('window').height-480),
                         justifyContent:'flex-end'

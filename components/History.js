@@ -5,5 +5,7 @@
 
 module.exports = {
     lastPlayBeaconId: '',
-    lastAccessExTag: ''
+    lastAccessExTag: '',
+    playingId: null,
+    phoneCallState: 0
 };

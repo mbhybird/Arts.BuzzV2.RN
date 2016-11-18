@@ -85,6 +85,11 @@ var Favorites = React.createClass({
      * @param {object} rowData Row data
      */
         _renderRowView(rowData) {
+        var fontSize = 18;
+        let locale = RealmRepo.Locale().displayLang;
+        if(locale =='en' || locale =='pt') {
+            fontSize = 14;
+        }
         return (
             <Swipeout right={[{
                         text:RealmRepo.getLocaleValue('lbl_delete'),
@@ -113,7 +118,7 @@ var Favorites = React.createClass({
                         <Image source={{uri:'love'}}
                                style={{width: 20, height: 20, margin:5}}/>
                         <View style={{flexWrap:'wrap',width:225}}>
-                            <Text style={{fontSize:18,fontWeight:'300'}}>{rowData.title}</Text>
+                            <Text style={{fontSize:fontSize,fontWeight:'300'}}>{rowData.title}</Text>
                         </View>
                     </View>
                 </TouchableOpacity>

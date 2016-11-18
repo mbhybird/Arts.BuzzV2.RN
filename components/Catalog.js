@@ -1,4 +1,4 @@
-import React, {View, Text, StyleSheet,Image,Dimensions,ActivityIndicatorIOS,Alert} from "react-native";
+import React, {View, Text, StyleSheet,Image,Dimensions,ActivityIndicatorIOS,Alert,NativeAppEventEmitter} from "react-native";
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 const EventEmitterMixin = require('react-event-emitter-mixin');
@@ -9,6 +9,12 @@ var ProgressBar = require('react-native-progress-bar');
 const History  = require("./History.js");
 import BluetoothState from 'react-native-bluetooth-state';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+const FileMgr = require("./FileMgr.js");
+const TimerMixin = require('react-timer-mixin');
+const ZipArchive = require('react-native-zip-archive');
+var downloadTotal;
+var downloaded;
+var downloading = false;
 
 const styles = StyleSheet.create({
     container: {
@@ -22,7 +28,7 @@ const styles = StyleSheet.create({
         padding:5,
         flexDirection:'row',
         alignItems: "flex-end",
-        justifyContent: "space-between",
+        justifyContent: "space-between"
     },
     body: {
         flex:9,
@@ -41,11 +47,13 @@ var modelStyle={
     modalDown: {
         justifyContent: 'space-around',
         alignItems: 'center',
-        height:150,
-        width:300
+        height:100,
+        width:300,
+        borderRadius: 10,
+        backgroundColor:'transparent'
     },
     text: {
-        color: "black",
+        color: "white",
         fontSize: 22
     },
     btn: {
@@ -89,7 +97,6 @@ var ModalIndicator = React.createClass({
 
         this.eventEmitter('on', 'downloadChanged', ()=> {
             if(this.refs.progressBar) {
-                this.refs.progressBar._finished();
                 setTimeout((function () {
                     this.refs.modalDown.close();
                 }).bind(this), 500);
@@ -97,6 +104,7 @@ var ModalIndicator = React.createClass({
             else {
                 this.refs.modalDown.close();
             }
+            downloading = false;
         });
 
         this.eventEmitter('on', 'localeChanged', (source)=> {
@@ -115,17 +123,41 @@ var ModalIndicator = React.createClass({
                    animationDuration={1}>
                 <ActivityIndicatorIOS
                     size="large"
-                    color="#aa3300"
+                    color="#fff"
                     />
-                <ProgressBarIndicator ref={"progressBar"}/>
-                <Text style={modelStyle.text}>{RealmRepo.getLocaleValue('msg_file_downloading')}</Text>
+                {/*<ProgressBarIndicator ref={"progressBar"}/>*/}
+                <ProgressInfo desc={RealmRepo.getLocaleValue('msg_file_downloading')}/>
             </Modal>
         );
     }
 });
 
+var ProgressInfo = React.createClass({
+    getInitialState(){
+        return {
+            numberText: this.props.desc
+        }
+    },
+    componentDidMount(){
+        var subscription = NativeAppEventEmitter.addListener('RNFileDownloadProgressCatalog', (info)=> {
+            let number = ((info.totalBytesWritten / info.totalBytesExpectedToWrite) * 100).toFixed(0) + '%';
+            if (info.totalBytesWritten == info.totalBytesExpectedToWrite) {
+                this.setState({numberText: this.props.desc + '100%'});
+            }
+            else {
+                if (info.totalBytesWritten < info.totalBytesExpectedToWrite) {
+                    this.setState({numberText: this.props.desc + number});
+                }
+            }
+        });
+    },
+    render(){
+        return (<Text style={modelStyle.text}>{this.state.numberText}</Text>);
+    }
+});
+
 var ToolBar = React.createClass({
-    mixins:[EventEmitterMixin],
+    mixins:[EventEmitterMixin,TimerMixin],
     getInitialState(){
         return {
             opacity: 0,
@@ -154,11 +186,26 @@ var ToolBar = React.createClass({
         BluetoothState.subscribe(bluetoothState => {
             this.setState({btON: bluetoothState == 'on'});
         });
+
+        var subscription = NativeAppEventEmitter.addListener('RNFileDownloadProgressCatalog', (info)=> {
+            if (info.totalBytesWritten == info.totalBytesExpectedToWrite) {
+                this.eventEmitter('emit', 'downloadChanged');
+                this.setTimeout(()=> {
+                    ZipArchive.unzip(info.targetPath + info.filename, info.targetPath)
+                        .then(() => {
+                            console.log('unzip completed!');
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                        })
+                }, 500);
+            }
+        });
     },
-   render(){
+    render(){
        return (
            <View style={styles.menu}>
-               <Button onPress={()=>{this.eventEmitter('emit','drawerOpenFromCatalog');}}>
+               <Button onPress={()=>{if(!downloading){this.eventEmitter('emit','drawerOpenFromCatalog');}}}>
                    <Image source={{uri:"menu"}}
                           style={{width: 50, height: 50}}/>
                </Button>
@@ -195,10 +242,37 @@ var ToolBar = React.createClass({
                */}
                <Button onPress={()=>{
                     if(this.state.opacity == 100){
-                        this.eventEmitter('emit', 'downloadStart');
-                        RealmRepo.updateExContent(this.state.exTag,()=>{
-                            this.eventEmitter('emit', 'downloadChanged');
-                        });
+                        if(!downloading){
+                            var exMaster = RealmRepo.getExMaster(this.state.exTag);
+                            var title = '';
+                            if(exMaster){
+                                title = exMaster['title_' + RealmRepo.Locale().displayLang];
+                            }
+                            Alert.alert(
+                                RealmRepo.getLocaleValue('msg_dlg_title_tips'),
+                                RealmRepo.getLocaleValue('msg_dlg_download_confirm').replace('%s',title),
+                                [
+                                    {
+                                        text: RealmRepo.getLocaleValue('msg_dlg_cancel')
+                                    },
+                                    {
+                                        text: RealmRepo.getLocaleValue('msg_dlg_ok'),
+                                        onPress: ()=> {
+                                            downloading = true;
+                                            this.eventEmitter('emit', 'downloadStart');
+                                            RealmRepo.updateExContent(this.state.exTag, ()=> {
+                                                let zipFileName = this.state.exTag + '.zip';
+                                                FileMgr.downloadFile(
+                                                    RealmRepo.GlobalParameter.PACKAGE_SERVER_PATH + zipFileName,
+                                                    RealmRepo.GlobalParameter.PACKAGE_CLIENT_PATH + this.state.exTag + '/',
+                                                    zipFileName,
+                                                    'Catalog');
+                                            });
+                                        }
+                                    }
+                                ]
+                            );
+                        }
                     }
                     //RealmRepo.removeAllData();//for debug
                 }}>
@@ -207,22 +281,22 @@ var ToolBar = React.createClass({
                </Button>
            </View>
        );
-   }
+    }
 });
 
 var ProgressBarIndicator = React.createClass({
-    _finished(){
-        this.setState({progress: 1})
-    },
     getInitialState(){
         return {
-            progress: 0.2
+            progress: 0.01
         }
     },
     render(){
         setTimeout((function () {
-            if (this.state.progress < 1) {
-                this.setState({progress: this.state.progress + (0.4 * Math.random())});
+            if (downloaded == downloadTotal) {
+                this.setState({progress: 0.01});
+            }
+            else {
+                this.setState({progress: (downloaded / downloadTotal).toFixed(2)});
             }
         }).bind(this), 100);
         return (

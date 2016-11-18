@@ -139,7 +139,8 @@ Config.schema = {
         voiceLang: {type: 'int'},
         firstTimeLogin: {type: 'int'},
         fbProfile: {type: 'string', optional: true},
-        wcProfile: {type: 'string', optional: true}
+        wcProfile: {type: 'string', optional: true},
+        earphonePlay: {type: 'int'}
     }
 };
 
@@ -293,10 +294,16 @@ ResourcesInit.push({key: 'lbl_share_ok',locale:'en', value:'Share successful'});
 ResourcesInit.push({key: 'lbl_share_ok',locale:'pt', value:'Compartilhar sucesso'});
 ResourcesInit.push({key: 'lbl_share_ok',locale:'cn', value:'分享成功'});
 ResourcesInit.push({key: 'lbl_share_ok',locale:'tw', value:'分享成功'});
+ResourcesInit.push({key: 'lbl_earphone_play',locale:'en', value:'Earphone play only'});
+ResourcesInit.push({key: 'lbl_earphone_play',locale:'pt', value:'Apenas fones de ouvido'});
+ResourcesInit.push({key: 'lbl_earphone_play',locale:'cn', value:'只限耳机播放'});
+ResourcesInit.push({key: 'lbl_earphone_play',locale:'tw', value:'只限耳機播放'});
 
 const PORT = 81;
 
 const API = ({
+    PACKAGE_SERVER_PATH: "http://arts.things.buzz/download/package/",
+    PACKAGE_CLIENT_PATH: "/com.buzz.exhibition/",
     GET_APP_USER_URL: "http://arts.things.buzz:" + PORT + "/api/appuser/Getappuser/%s",
     POST_APP_USER_URL : "http://arts.things.buzz:" + PORT + "/api/appuser/Postappuser",
     PUT_APP_USER_URL : "http://arts.things.buzz:" + PORT + "/api/appuser/Putappuser/%s",
@@ -410,6 +417,7 @@ Date.prototype.format = function(fmt){
 };
 
 module.exports = ({
+    GlobalParameter:API,
     Locale:getLocale,
     DeviceLocaleCode:getDeviceLocaleCode(),
     initResources:()=> {
@@ -421,6 +429,30 @@ module.exports = ({
                 });
             });
         }
+
+        //update db schema version and data
+        let newData = realm.objects('Resources').filtered('key="msg_dlg_download_confirm"');
+        if(newData.length == 0 ) {
+            var newResources = [];
+            newResources.push({key: 'msg_dlg_download_confirm', locale: 'en', value: 'Are you sure to download content for "%s", it may take few minutes?'});
+            newResources.push({key: 'msg_dlg_download_confirm', locale: 'pt', value: 'Are you sure to download content for "%s", it may take few minutes?'});
+            newResources.push({key: 'msg_dlg_download_confirm', locale: 'cn', value: '是否确定下载"%s"內容, 可能需时数分钟？'});
+            newResources.push({key: 'msg_dlg_download_confirm', locale: 'tw', value: '是否確定下載"%s"內容, 可能需時數分鐘？'});
+            newResources.push({key: 'msg_connect_headset',locale: 'en', value: 'Please connect the headset!'});
+            newResources.push({key: 'msg_connect_headset',locale: 'pt', value: 'Por favor, conecte o fone de ouvido!'});
+            newResources.push({key: 'msg_connect_headset',locale: 'cn', value: '请连接耳机!'});
+            newResources.push({key: 'msg_connect_headset',locale: 'tw', value: '請連接耳機!'});
+            newResources.push({key: 'msg_dlg_cancel',locale: 'en', value: 'Cancel'});
+            newResources.push({key: 'msg_dlg_cancel',locale: 'pt', value: 'Cancelar'});
+            newResources.push({key: 'msg_dlg_cancel',locale: 'cn', value: '取消'});
+            newResources.push({key: 'msg_dlg_cancel',locale: 'tw', value: '取消'});
+            realm.write(() => {
+                newResources.forEach(function (item) {
+                    realm.create('Resources', item);
+                });
+            });
+        }
+
     },
     getLocaleValue:(key)=> {
         let Resources = realm.objects('Resources').filtered('key="' + key + '" AND locale="' + getLocale().displayLang + '"');
@@ -474,7 +506,7 @@ module.exports = ({
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(userConfig)
             })
@@ -494,7 +526,8 @@ module.exports = ({
                                 voiceLang: voiceLang,
                                 firstTimeLogin: 0,
                                 fbProfile: null,
-                                wcProfile: null
+                                wcProfile: null,
+                                earphonePlay: 1
                             };
                             realm.create('Config', user);
                         });
@@ -532,7 +565,7 @@ module.exports = ({
 
         callback({user: config[0]});
     },
-    updateUserConfig:(displayLang,voiceLang,autoPlay,callback)=> {
+    updateUserConfig:(displayLang,voiceLang,autoPlay,earphonePlay,callback)=> {
         //update db & server value
         let config = realm.objects('Config');
         var userConfig = {};
@@ -548,6 +581,7 @@ module.exports = ({
                 config[0].displayLang = displayLang == null ? config[0].displayLang : displayLang;
                 config[0].voiceLang = voiceLang == null ? config[0].voiceLang : voiceLang;
                 config[0].autoPlay = autoPlay == null ? config[0].autoPlay : autoPlay;
+                config[0].earphonePlay = earphonePlay == null ? config[0].earphonePlay : earphonePlay;
             });
         }
 
@@ -555,7 +589,7 @@ module.exports = ({
             method: 'PUT',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(userConfig)
         })
@@ -568,7 +602,7 @@ module.exports = ({
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 "userid": userId,
@@ -636,16 +670,18 @@ module.exports = ({
                     + audioContent[0].filename.replace(".mp3", `_${getLocale().voiceLang}.mp3`)
                 }
 
-                list.push({
-                    key: item.extag + '-' + item.refImageId + '-' + item.refAudioId,
-                    extag: item.extag,
-                    refImageId: item.refImageId,
-                    refAudioId: item.refAudioId,
-                    title: title ? title : 'Unknown',
-                    audioPath: audioPath,
-                    desc: desc,
-                    baseUrl: baseUrl
-                });
+                if(title) {
+                    list.push({
+                        key: item.extag + '-' + item.refImageId + '-' + item.refAudioId,
+                        extag: item.extag,
+                        refImageId: item.refImageId,
+                        refAudioId: item.refAudioId,
+                        title: title,
+                        audioPath: audioPath,
+                        desc: desc,
+                        baseUrl: baseUrl
+                    });
+                }
             });
             return list;
         }
@@ -689,6 +725,7 @@ module.exports = ({
     },
     updateExContent: (extag,callback) => {
         fetchData(API.GET_EX_CONTENT_URL.replace('%s', extag), function (json) {
+            var downloadTask = [];
             let catalog = realm.objects('Catalog').filtered('extag="' + extag + '"');
             if (catalog.length > 0) {
                 realm.write(() => {
@@ -717,19 +754,19 @@ module.exports = ({
                             contents.push(item);
 
                             if (item.contenttype == 2) {
-                                FileMgr.downloadFile(
-                                    item.serverpath,
-                                    item.clientpath,
-                                    item.filename
-                                );
+                                downloadTask.push({
+                                    serverPath: item.serverpath,
+                                    clientPath: item.clientpath,
+                                    fileName: item.filename
+                                });
                             }
                             else if (item.contenttype == 1) {
                                 ["sc", "cc", "en", "pt"].forEach((locale)=> {
-                                    FileMgr.downloadFile(
-                                        item.serverpath.replace(".mp3", `_${locale}.mp3`),
-                                        item.clientpath,
-                                        item.filename.replace(".mp3", `_${locale}.mp3`)
-                                    );
+                                    downloadTask.push({
+                                        serverPath: item.serverpath.replace(".mp3", `_${locale}.mp3`),
+                                        clientPath: item.clientpath,
+                                        fileName: item.filename.replace(".mp3", `_${locale}.mp3`)
+                                    });
                                 });
                             }
                         }
@@ -743,7 +780,7 @@ module.exports = ({
                     }
                 });
             }
-            callback();
+            callback(downloadTask);
         });
     },
     deleteExContent: (extag,callback) => {
@@ -770,6 +807,44 @@ module.exports = ({
             realm.delete(realm.objects('Download'));
             realm.delete(realm.objects('Resources'));
         });
+    },
+    isCatalogRefresh: (callback)=> {
+        fetch(API.GET_DATA_VERSION_URL)
+            .then((response) => response.json())
+            .then((json) => {
+                let clientDataVersion = null;
+                let download = realm.objects('Download');
+                if (download.length > 0) {
+                    clientDataVersion = download[0].dataVersion.toLowerCase();
+                }
+
+                let newVersion = (json.publishedversion + "").toLowerCase();
+
+                if (clientDataVersion != null) {
+                    if (clientDataVersion != newVersion) {
+                        callback({update: true});
+                    }
+                    else {
+                        let zipFileName = 'catalog.zip';
+                        let catalogFile = RNFS.DocumentDirectoryPath + API.PACKAGE_CLIENT_PATH + zipFileName;
+                        if(RNFS.exists(catalogFile)) {
+                            callback({update: false});
+                            console.log('catalog file exists');
+                        }
+                        else{
+                            callback({update: true});
+                            console.log('catalog file not exists');
+                        }
+                    }
+                }
+                else {
+                    callback({update: true});
+                }
+            })
+            .catch(err=> {
+                console.log(err);
+                callback({update: false});
+            });
     },
     checkDataVersionUpdate: () => {
         fetchData(API.GET_DATA_VERSION_URL, function (json) {
@@ -816,7 +891,7 @@ module.exports = ({
                                     realm.delete(realm.objects('TriggerContent').filtered('extag="' + diffExTag + '"'));
                                     realm.delete(realm.objects('Trigger').filtered('extag="' + diffExTag + '"'));
                                     realm.delete(realm.objects('Content').filtered('extag="' + diffExTag + '"'));
-                                    realm.delete(realm.objects('Favorites').filtered('extag="' + diffExTag + '"'));
+                                    //realm.delete(realm.objects('Favorites').filtered('extag="' + diffExTag + '"'));
                                 }
                             }
 
@@ -857,7 +932,6 @@ module.exports = ({
                                         item.content.extag = item.extag;
                                         catalog[0].fileCount = fileCount;
                                         catalog[0].exMaster = item;
-
 
                                         FileMgr.downloadFile(
                                             item.content.serverpath,

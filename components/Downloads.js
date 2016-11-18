@@ -13,18 +13,25 @@ var {
     Platform,
     Image,
     ActivityIndicatorIOS,
+    NativeAppEventEmitter,
+    Modal,
+    Alert
     } = React;
 
 var GiftedListView = require('react-native-gifted-listview');
 var GiftedSpinner = require('react-native-gifted-spinner');
 import Button from "react-native-button";
-var Modal = require('react-native-modalbox');
+var ModalBox = require('react-native-modalbox');
 const TimerMixin = require('react-timer-mixin');
 const EventEmitterMixin = require('react-event-emitter-mixin');
 const RealmRepo = require("./RealmRepo.js");
 var Swipeout = require('react-native-swipeout');
 var ProgressBar = require('react-native-progress-bar');
-
+const FileMgr = require("./FileMgr.js");
+const ZipArchive = require('react-native-zip-archive');
+var downloadTotal;
+var downloaded;
+var downloading = false;
 var opExTag = "";
 
 var Downloads = React.createClass({
@@ -34,6 +41,7 @@ var Downloads = React.createClass({
             this.refs.modal.close();
             this.refs.lv._refresh();
             this.eventEmitter('emit', 'downloadChanged');
+            //FileMgr.deleteFile(opExTag,RealmRepo.GlobalParameter.PACKAGE_CLIENT_PATH);
         });
     },
     componentDidMount(){
@@ -80,22 +88,32 @@ var Downloads = React.createClass({
 
         //download exContent
         if(!rowData.finished) {
-            this.refs.modalDown.open();
-            this.setTimeout(()=> {
-                RealmRepo.updateExContent(rowData.extag, ()=> {
-                    if(this.refs.progressBar) {
-                        this.refs.progressBar._finished();
-                        setTimeout((function () {
-                            this.refs.modalDown.close();
-                        }).bind(this), 500);
-                    }
-                    else {
-                        this.refs.modalDown.close();
-                    }
-                    this.refs.lv._refresh();
-                    this.eventEmitter('emit', 'downloadChanged');
-                });
-            }, 500);
+            if (!downloading) {
+                Alert.alert(
+                    RealmRepo.getLocaleValue('msg_dlg_title_tips'),
+                    RealmRepo.getLocaleValue('msg_dlg_download_confirm').replace('%s',rowData.title),
+                    [
+                        {
+                            text: RealmRepo.getLocaleValue('msg_dlg_cancel')
+                        },
+                        {
+                            text: RealmRepo.getLocaleValue('msg_dlg_ok'),
+                            onPress: ()=> {
+                                downloading = true;
+                                this.modalDown._setModalVisible(true);
+                                RealmRepo.updateExContent(rowData.extag, ()=> {
+                                    let zipFileName = rowData.extag + '.zip';
+                                    FileMgr.downloadFile(
+                                        RealmRepo.GlobalParameter.PACKAGE_SERVER_PATH + zipFileName,
+                                        RealmRepo.GlobalParameter.PACKAGE_CLIENT_PATH + rowData.extag + '/',
+                                        zipFileName,
+                                        'LeftMenu');
+                                });
+                            }
+                        }
+                    ]
+                );
+            }
         }
         /*
         else{
@@ -118,12 +136,12 @@ var Downloads = React.createClass({
                 <View style={{
                     flexDirection:'row',
                     justifyContent:'center',
-                    alignItems:'center',
+                    alignItems:'center'
                 }}>
                     <Image source={{uri:rowData.finished?'dlfinished':'icon_download'}}
                            style={{width: 25, height: 25, margin:5}}/>
                     <View style={{flexWrap:'wrap',width:225}}>
-                        <Text style={{fontSize:16,fontWeight:'300'}}>{rowData.title}({rowData.fileCount})</Text>
+                        <Text style={{fontSize:16,fontWeight:'300'}}>{rowData.title}</Text>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -332,11 +350,11 @@ var Downloads = React.createClass({
 
                     PullToRefreshViewAndroidProps={{
                         colors: ['#fff'],
-                        progressBackgroundColor: '#003e82',
+                        progressBackgroundColor: '#003e82'
                       }}
                     />
 
-                <Modal style={modelStyle.modal}
+                <ModalBox style={modelStyle.modal}
                        position={"center"}
                        backdrop={true}
                        ref={"modal"}
@@ -346,19 +364,78 @@ var Downloads = React.createClass({
                     <Button style={modelStyle.btn} onPress={()=>{
                         this._deleteThenReload();
                     }}>{RealmRepo.getLocaleValue('msg_dlg_ok')}</Button>
-                </Modal>
-                <Modal style={modelStyle.modalDown}
-                       backdrop={false}
-                       position={"center"}
-                       ref={"modalDown"}
-                       isDisabled={false}
-                       animationDuration={1}>
-                    <ActivityIndicatorIOS
-                        size="large"
-                        color="#aa3300"
-                        />
-                    <ProgressBarIndicator ref={"progressBar"}/>
-                    <Text style={modelStyle.text}>{RealmRepo.getLocaleValue('msg_file_downloading')}</Text>
+                </ModalBox>
+                <ModalExample ref={(ref)=>{this.modalDown = ref;}}/>
+            </View>
+        );
+    }
+});
+
+var ModalExample = React.createClass({
+    mixins:[EventEmitterMixin,TimerMixin],
+    getInitialState() {
+        return {
+            animated: true,
+            modalVisible: false,
+            transparent: true,
+            progress: 0
+        };
+    },
+    componentDidMount(){
+        var subscription = NativeAppEventEmitter.addListener('RNFileDownloadProgressLeftMenu', (info)=> {
+            let number = ((info.totalBytesWritten / info.totalBytesExpectedToWrite) * 100).toFixed(0);
+            if (info.totalBytesWritten == info.totalBytesExpectedToWrite) {
+                downloading = false;
+                this.setState({modalVisible: false});
+                this.setState({progress: 0});
+                this.eventEmitter('emit', 'downloadChanged');
+                this.eventEmitter('emit', 'catalogDownload');
+                this.setTimeout(()=> {
+                    ZipArchive.unzip(info.targetPath + info.filename, info.targetPath)
+                        .then(() => {
+                            console.log('unzip completed!');
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                        })
+                }, 500);
+            }
+            else {
+                if (info.totalBytesWritten < info.totalBytesExpectedToWrite) {
+                    this.setState({progress: number});
+                }
+            }
+        });
+    },
+    _setModalVisible(visible) {
+        this.setState({modalVisible: visible});
+    },
+
+    render() {
+        var modalBackgroundStyle = {
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
+        };
+        var innerContainerTransparentStyle = {
+            backgroundColor: 'transparent', padding: 10
+        };
+
+        return (
+            <View>
+                <Modal
+                    animated={this.state.animated}
+                    transparent={this.state.transparent}
+                    visible={this.state.modalVisible}
+                    onRequestClose={() => {this._setModalVisible(false)}}
+                    >
+                    <View style={[styles.container, modalBackgroundStyle]}>
+                        <View style={[styles.innerContainer, innerContainerTransparentStyle]}>
+                            <ActivityIndicatorIOS
+                                size="large"
+                                color="#fff"
+                                />
+                            <Text style={modelStyle.downloadText}>{RealmRepo.getLocaleValue('msg_file_downloading')+ this.state.progress + '%'}</Text>
+                        </View>
+                    </View>
                 </Modal>
             </View>
         );
@@ -366,18 +443,18 @@ var Downloads = React.createClass({
 });
 
 var ProgressBarIndicator = React.createClass({
-    _finished(){
-        this.setState({progress: 1})
-    },
     getInitialState(){
         return {
-            progress: 0.2
+            progress: 0.01
         }
     },
     render(){
         setTimeout((function () {
-            if (this.state.progress < 1) {
-                this.setState({progress: this.state.progress + (0.4 * Math.random())});
+            if (downloaded == downloadTotal) {
+                this.setState({progress: 0.01});
+            }
+            else {
+                this.setState({progress: (downloaded / downloadTotal).toFixed(2)});
             }
         }).bind(this), 100);
         return (
@@ -392,6 +469,17 @@ var ProgressBarIndicator = React.createClass({
     }
 });
 
+var styles = {
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: 30
+    },
+    innerContainer: {
+        borderRadius: 10,
+        alignItems: 'center'
+    }
+};
 
 var customStyles = {
     separator: {
@@ -402,27 +490,27 @@ var customStyles = {
         height: 50,
         backgroundColor: '#fff',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'center'
     },
     actionsLabel: {
         fontSize: 20,
-        color: '#007aff',
+        color: '#007aff'
     },
     paginationView: {
         height: 44,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFF',
+        backgroundColor: '#FFF'
     },
     defaultView: {
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 20
     },
     defaultViewTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        marginBottom: 15,
+        marginBottom: 15
     },
     row: {
         padding:3,
@@ -432,15 +520,16 @@ var customStyles = {
     },
     header: {
         backgroundColor: '#50a4ff',
-        padding: 10,
+        padding: 10
     },
     headerTitle: {
-        color: '#fff',
-    },
+        color: '#fff'
+    }
 };
 
 var modelStyle={
     modal: {
+        borderRadius: 10,
         justifyContent: 'space-around',
         alignItems: 'center',
         height:150,
@@ -454,7 +543,12 @@ var modelStyle={
     },
     text: {
         color: "black",
-        fontSize: 22
+        fontSize: 18
+    },
+    downloadText: {
+        padding: 10,
+        color: "white",
+        fontSize: 18
     },
     btn: {
         margin: 10,
@@ -467,19 +561,19 @@ var modelStyle={
 var screenStyles = {
     container: {
         flex: 1,
-        backgroundColor: '#698686',
+        backgroundColor: '#698686'
     },
     navBar: {
         height: 64,
         backgroundColor: '#698686',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'center'
     },
     navBarTitle: {
         color: '#fff',
         fontSize: 30,
         fontWeight:'bold',
-        marginTop: 12,
+        marginTop: 12
     }
 };
 

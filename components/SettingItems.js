@@ -21,7 +21,7 @@ var SettingItems = React.createClass({
     componentDidMount(){
         this.eventEmitter('on', 'configChanged', (params)=> {
             RealmRepo.updateUserConfig(
-                params.displayLang, params.voiceLang, params.autoPlay
+                params.displayLang, params.voiceLang, params.autoPlay, params.earphonePlay
                 , (res) => {
                     console.log(res);
                 });
@@ -35,7 +35,8 @@ var SettingItems = React.createClass({
         return {
             selectedSegment: ['OFF', 'ON'][ref.user.autoPlay],
             checkAudioListOption: ['粤语', '普通话', 'English', 'Português'][ref.user.voiceLang],
-            checkDisplayListOption: ['繁體中文', '简体中文', 'English', 'Português'][ref.user.displayLang]
+            checkDisplayListOption: ['繁體中文', '简体中文', 'English', 'Português'][ref.user.displayLang],
+            selectedEarphonePlay:['OFF', 'ON'][ref.user.earphonePlay]
         };
     },
     render() {
@@ -43,6 +44,7 @@ var SettingItems = React.createClass({
       backgroundColor: '#eeeeee'
     }}>
             {this.renderHelp()}
+            {this.renderEarphonePlay()}
             {this.renderSegmentControlClone()}
             {this.renderDisplayCheckList()}
             {this.renderAudioCheckList()}
@@ -52,9 +54,9 @@ var SettingItems = React.createClass({
         return (
             <View style={{
                 marginTop: 1,
-                paddingTop: 10,
+                paddingTop: 5,
                 paddingLeft: 15,
-                paddingBottom: 10,
+                paddingBottom: 5,
                 backgroundColor: 'white',
                 flexDirection: 'row',
                 overflow:'hidden'
@@ -83,6 +85,30 @@ var SettingItems = React.createClass({
             </View>
         );
     },
+    renderEarphonePlay() {
+        const options = [
+            'ON',
+            'OFF'
+        ];
+
+        function setSelectedOption(selectedEarphonePlay) {
+            this.setState({
+                selectedEarphonePlay
+            });
+            this.eventEmitter('emit','configChanged',{earphonePlay:selectedEarphonePlay=="ON"?1:0});
+            this.eventEmitter('emit','settingChanged',this.props.name);
+        }
+
+        return (
+            <View style={{marginTop: 1, paddingLeft: 15, paddingBottom: 5, paddingTop:5, paddingRight: 10, backgroundColor: 'white'}}>
+                <Text style={{paddingBottom: 5, fontWeight:'bold'}}>{RealmRepo.getLocaleValue('lbl_earphone_play')}</Text>
+                <SegmentedControls
+                    options={ options }
+                    onSelection={ setSelectedOption.bind(this) }
+                    selectedOption={ this.state.selectedEarphonePlay }
+                    />
+            </View>);
+    },
     renderAudioCheckList() {
         const options = [
             "粤语",
@@ -100,7 +126,7 @@ var SettingItems = React.createClass({
 
         function setSelectedOption(checkAudioListOption) {
             this.setState({
-                checkAudioListOption,
+                checkAudioListOption
             });
             this.eventEmitter('emit','configChanged',{voiceLang:values[checkAudioListOption]});
             this.eventEmitter('emit','settingChanged',this.props.name);
@@ -113,10 +139,10 @@ var SettingItems = React.createClass({
                 paddingBottom: 10,
                 color: 'black',
                 flex: 1,
-                fontSize: 14,
+                fontSize: 14
             };
             const baseStyle = {
-                flexDirection: 'row',
+                flexDirection: 'row'
             };
             var style;
             var checkMark;
@@ -124,7 +150,7 @@ var SettingItems = React.createClass({
             if (index > 0) {
                 style = [baseStyle, {
                     borderTopColor: '#eeeeee',
-                    borderTopWidth: 1,
+                    borderTopWidth: 1
                 }];
             } else {
                 style = baseStyle;
@@ -137,7 +163,7 @@ var SettingItems = React.createClass({
                   fontWeight: 'bold',
                   paddingTop: 8,
                   fontSize: 20,
-                  alignSelf: 'center',
+                  alignSelf: 'center'
                 }}>✓</Text>;
             }
 
@@ -159,7 +185,7 @@ var SettingItems = React.createClass({
           borderTopWidth: 1,
           borderTopColor: '#cccccc',
           borderBottomWidth: 1,
-          borderBottomColor: '#cccccc',
+          borderBottomColor: '#cccccc'
         }}>
                     {options}
                 </View>
@@ -170,7 +196,7 @@ var SettingItems = React.createClass({
             <View style={{flex: 1}}>
                 <View style={{marginTop: 10, backgroundColor: 'white'}}>
                     <View style={{
-            backgroundColor: '#eeeeee',
+            backgroundColor: '#eeeeee'
           }}>
                         <Text style={{
               color: '#555555',
@@ -196,7 +222,7 @@ var SettingItems = React.createClass({
             "繁體中文",
             "简体中文",
             "English",
-            "Português",
+            "Português"
         ];
 
         const values = {
@@ -208,7 +234,7 @@ var SettingItems = React.createClass({
 
         function setSelectedOption(checkDisplayListOption) {
             this.setState({
-                checkDisplayListOption,
+                checkDisplayListOption
             });
             this.eventEmitter('emit','configChanged',{displayLang:values[checkDisplayListOption]});
             this.eventEmitter('emit','localeChanged',this.props.name);
@@ -221,10 +247,10 @@ var SettingItems = React.createClass({
                 paddingBottom: 10,
                 color: 'black',
                 flex: 1,
-                fontSize: 14,
+                fontSize: 14
             };
             const baseStyle = {
-                flexDirection: 'row',
+                flexDirection: 'row'
             };
             var style;
             var checkMark;
@@ -232,7 +258,7 @@ var SettingItems = React.createClass({
             if (index > 0) {
                 style = [baseStyle, {
                     borderTopColor: '#eeeeee',
-                    borderTopWidth: 1,
+                    borderTopWidth: 1
                 }];
             } else {
                 style = baseStyle;
@@ -245,7 +271,7 @@ var SettingItems = React.createClass({
           fontWeight: 'bold',
           paddingTop: 8,
           fontSize: 20,
-          alignSelf: 'center',
+          alignSelf: 'center'
         }}>✓</Text>;
             }
 
@@ -267,7 +293,7 @@ var SettingItems = React.createClass({
           borderTopWidth: 1,
           borderTopColor: '#cccccc',
           borderBottomWidth: 1,
-          borderBottomColor: '#cccccc',
+          borderBottomColor: '#cccccc'
         }}>
                     {options}
                 </View>
@@ -278,7 +304,7 @@ var SettingItems = React.createClass({
             <View style={{flex: 1}}>
                 <View style={{marginTop: 10, backgroundColor: 'white'}}>
                     <View style={{
-            backgroundColor: '#eeeeee',
+            backgroundColor: '#eeeeee'
           }}>
                         <Text style={{
               color: '#555555',
@@ -302,7 +328,7 @@ var SettingItems = React.createClass({
     renderSegmentControlClone() {
         const options = [
             'ON',
-            'OFF',
+            'OFF'
         ];
 
         function setSelectedOption(selectedSegment) {
@@ -314,8 +340,8 @@ var SettingItems = React.createClass({
         }
 
         return (
-            <View style={{marginTop: 1, padding: 15, backgroundColor: 'white'}}>
-                <Text style={{paddingBottom: 10, fontWeight:'bold'}}>{RealmRepo.getLocaleValue('lbl_setting_auto_play')}</Text>
+            <View style={{marginTop: 1, paddingLeft: 15, paddingBottom: 5, paddingTop: 5, paddingRight: 10, backgroundColor: 'white'}}>
+                <Text style={{paddingBottom: 5, fontWeight:'bold'}}>{RealmRepo.getLocaleValue('lbl_setting_auto_play')}</Text>
                 <SegmentedControls
                     options={ options }
                     onSelection={ setSelectedOption.bind(this) }
@@ -331,18 +357,18 @@ var styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F5FCFF',
+        backgroundColor: '#F5FCFF'
     },
     welcome: {
         fontSize: 20,
         textAlign: 'center',
-        margin: 10,
+        margin: 10
     },
     instructions: {
         textAlign: 'center',
         color: '#333333',
-        marginBottom: 5,
-    },
+        marginBottom: 5
+    }
 });
 
 module.exports = SettingItems;

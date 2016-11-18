@@ -37,8 +37,24 @@ var Guide = React.createClass({
     }
 });
 
+var dragIndex = 0;
+var viewIndex = 0;
+
 var SwiperComp = React.createClass({
     mixins:[EventEmitterMixin],
+    _onMomentumScrollEnd: function (e, state, context) {
+        viewIndex = state.index;
+    },
+    _onScrollBeginDrag: function (e, state, context) {
+        dragIndex = state.index;
+        if(viewIndex == state.total - 1) {
+            if (viewIndex == dragIndex) {
+                RealmRepo.updateFirstTimeLogin((res)=> {
+                    Actions.home({user: res.user});
+                });
+            }
+        }
+    },
     render: function () {
         let locale = RealmRepo.Locale().displayLang.replace('pt', 'en');
         var guideList = [
@@ -60,7 +76,7 @@ var SwiperComp = React.createClass({
                             Actions.home({user:res.user});
                         });
                     }}>
-                    <Image source={{uri:'close'}} style={{width:30,height:30}}/>
+                    <Image source={{uri:'close_red'}} style={{width:30,height:30}}/>
                 </TouchableWithoutFeedback>
             </View>
         );
@@ -105,7 +121,9 @@ var SwiperComp = React.createClass({
             <View>
                 <Swiper height={Screen.height}
                         showsButtons={false}
-                        loop={false}>
+                        loop={false}
+                        onMomentumScrollEnd={this._onMomentumScrollEnd}
+                        onScrollBeginDrag={this._onScrollBeginDrag}>
                     {guideView}
                 </Swiper>
             </View>

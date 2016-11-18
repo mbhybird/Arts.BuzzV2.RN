@@ -36,6 +36,7 @@
     "react-native-swiper": "^1.4.3",
     "react-native-vector-icons": "^2.0.1",
     "react-native-wx": "1.0.7",
+    "react-native-zip-archive": "0.0.11",
     "react-timer-mixin": "^0.13.3",
     "realm": "^0.11.1",
     "request": "^2.72.0"

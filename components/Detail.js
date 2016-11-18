@@ -3,7 +3,7 @@
  */
 
 var React = require('react-native');
-var { StyleSheet, View,Text,Image,Dimensions,WebView,NativeModules,NativeAppEventEmitter,Alert} = React;
+var { StyleSheet, View,Text,Image,Dimensions,WebView,NativeModules,NativeAppEventEmitter,Alert,DeviceEventEmitter} = React;
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 var Sound = require('react-native-sound');
@@ -15,6 +15,7 @@ const RNS = NativeModules.RNSound;
 const RealmRepo = require("./RealmRepo.js");
 var {FBSDKShareDialog,FBSDKShareLinkContent,} = require('react-native-fbsdkshare');
 var ActionSheet = require('@remobile/react-native-action-sheet');
+const History  = require("./History.js");
 
 /*
 RNSound.m
@@ -188,6 +189,16 @@ var Detail = React.createClass({
     },
     render: function () {
         let BGWASH = 'rgba(69,86,86,0.1)';
+        let user = RealmRepo.getUser();
+        var appUserId = "";
+        var descHtml = "";
+        if(user) {
+            appUserId = user.userId;
+        }
+        if(this.props.desc) {
+            descHtml = this.props.desc.replace("{appuser}", appUserId);
+            descHtml = descHtml.replace("{locale}", RealmRepo.Locale().displayLang);
+        }
         return (
             <View style={styles.container}>
                 <View style={styles.body}>
@@ -196,7 +207,7 @@ var Detail = React.createClass({
                             backgroundColor: BGWASH,
                             width:Dimensions.get('window').width
                         }}
-                        source={{html: this.props.desc, baseUrl: this.props.baseUrl}}
+                        source={{html: descHtml, baseUrl: this.props.baseUrl}}
                         scrollEnabled={true}
                         />
                 </View>
@@ -232,19 +243,25 @@ var Detail = React.createClass({
 var ToolBar = React.createClass({
     mixins:[EventEmitterMixin],
     autoPlay(){
-        RNS.headsetDeviceAvailable((v)=> {
-            if (v) {
-                let user = RealmRepo.getUser();
-                if (user) {
-                    if (user.autoPlay == 1) {
-                        this.replay();
+        /*
+        RNS.headsetDeviceAvailable((v)=>{
+            let user = RealmRepo.getUser();
+            if (user) {
+                if (user.autoPlay == 1) {
+                    if (user.earphonePlay == 1) {
+                        if (v) {
+                            this.replay();
+                        }
                     }
                     else {
-                        this.setState({play: false});
+                        this.replay();
                     }
                 }
+                else{
+                    this.setState({play: false});
+                }
             }
-        });
+        });*/
     },
     componentDidMount(){
         this.eventEmitter('on', 'detailClose', ()=> {
@@ -255,8 +272,32 @@ var ToolBar = React.createClass({
         });
         this.eventEmitter('on', 'refreshFavState', ()=> {
             let favExists = RealmRepo.favoriteExists(this.props.extag, this.props.refImageId, this.props.refAudioId);
-            this.setState({icon: favExists ? 'liked' : 'favorite'});
+            this.setState({icon: favExists ? 'liked' : 'favorite', play: false});
+            if (this.props.mode == 'auto') {
+                this.replay();
+            }
         });
+
+        var subscription = DeviceEventEmitter.addListener(
+            'HeadphoneBreak',
+            () => {
+                this.pause();
+            });
+
+        var subscriptionPhoneCallBegan = DeviceEventEmitter.addListener(
+            'PhoneCallBegan',
+            () => {
+                this.stop();
+                History.phoneCallState = 1;
+                //console.log('state=>' + History.phoneCallState);
+            });
+
+        var subscriptionPhoneCallEnd = DeviceEventEmitter.addListener(
+            'PhoneCallEnd',
+            () => {
+                History.phoneCallState = 0;
+                //console.log('state=>' + History.phoneCallState);
+            });
     },
     componentWillMount(){
         this.autoPlay();
@@ -282,23 +323,54 @@ var ToolBar = React.createClass({
         }
     },
     play(){
-        RNS.headsetDeviceAvailable((v)=> {
-            if (v) {
-                // Play the sound with an onEnd callback
-                if (this.props.sound) {
-                    this.setState({play: true});
-                    this.props.sound.play((success) => {
-                        if (success) {
-                            console.log('successfully finished playing');
-                        } else {
-                            console.log('playback failed due to audio decoding errors');
-                        }
+        if (History.phoneCallState == 0) {
+            RNS.headsetDeviceAvailable((v)=> {
+                let user = RealmRepo.getUser();
+                if (user.earphonePlay == 1) {
+                    if (v) {
+                        // Play the sound with an onEnd callback
+                        if (this.props.sound) {
+                            this.setState({play: true});
+                            this.props.sound.play((success) => {
+                                if (success) {
+                                    console.log('successfully finished playing');
+                                } else {
+                                    console.log('playback failed due to audio decoding errors');
+                                }
 
-                        this.setState({play: false});
-                    });
+                                this.setState({play: false});
+                            });
+                        }
+                    }
+                    else{
+                        Alert.alert(
+                            RealmRepo.getLocaleValue('msg_dlg_title_tips'),
+                            RealmRepo.getLocaleValue('msg_connect_headset'),
+                            [
+                                {
+                                    text: RealmRepo.getLocaleValue('msg_dlg_ok')
+                                }
+                            ]
+                        );
+                    }
                 }
-            }
-        });
+                else {
+                    // Play the sound with an onEnd callback
+                    if (this.props.sound) {
+                        this.setState({play: true});
+                        this.props.sound.play((success) => {
+                            if (success) {
+                                console.log('successfully finished playing');
+                            } else {
+                                console.log('playback failed due to audio decoding errors');
+                            }
+
+                            this.setState({play: false});
+                        });
+                    }
+                }
+            });
+        }
     },
     replay(){
         this.stop();
@@ -306,25 +378,25 @@ var ToolBar = React.createClass({
     },
     stop(){
         // Stop the sound and rewind to the beginning
-        RNS.headsetDeviceAvailable((v)=> {
-            if (v) {
+        //RNS.headsetDeviceAvailable((v)=> {
+            //if (v) {
                 if (this.props.sound) {
                     this.props.sound.stop();
                     this.setState({play: false});
                 }
-            }
-        });
+            //}
+        //});
     },
     pause(){
         // Pause the sound
-        RNS.headsetDeviceAvailable((v)=> {
-            if (v) {
+        //RNS.headsetDeviceAvailable((v)=> {
+            //if (v) {
                 if (this.props.sound) {
                     this.props.sound.pause();
                     this.setState({play: false});
                 }
-            }
-        });
+            //}
+        //});
     },
     release(){
         // Release the audio player resource

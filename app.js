@@ -36,14 +36,14 @@ class Right extends React.Component {
         position: "absolute",
         bottom: 4,
         right: 2,
-        padding: 8,
+        padding: 8
     }}>Right</Text>
     }
 }
 
 const styles = StyleSheet.create({
     container: {flex:1, backgroundColor:"transparent",justifyContent: "center",
-        alignItems: "center",}
+        alignItems: "center"}
 
 });
 
@@ -82,9 +82,10 @@ Beacons.startRangingBeaconsInRegion(region);
 
 Beacons.startUpdatingLocation();
 
+/*
 AppState.addEventListener('change', ()=> {
     //console.log(AppState.currentState == 'background');
-});
+});*/
 
 var beaconState = [];
 var headState = {};
@@ -93,6 +94,7 @@ var lastBeaconId = "";
 var modalState = false;
 var s = null;
 var canReceiveSignal = false;
+var orderState = null;
 
 /*
 RCTPushNotificationManager.m
@@ -130,16 +132,28 @@ var App = React.createClass({
             });
         }
     },
-    playSound(){
-        s = new Sound(openHeadState.audioPath, null, (e) => {
+    playSound(audioPath){
+        //var audioPath = openHeadState.audioPath;
+        if(s){
+            s.release();
+        }
+        s = new Sound(audioPath, null, (e) => {
             if (e) {
                 console.log('error', e);
             } else {
-                RNS.headsetDeviceAvailable((v)=>{
-                    if(v) {
-                        let user = RealmRepo.getUser();
-                        if (user) {
-                            if (user.autoPlay == 1) {
+                RNS.headsetDeviceAvailable((v)=> {
+                    let user = RealmRepo.getUser();
+                    if (user) {
+                        if (user.autoPlay == 1) {
+                            if (user.earphonePlay == 1) {
+                                if (v) {
+                                    if (s && s.isLoaded()) {
+                                        s.setPan(0);
+                                        s.play();
+                                    }
+                                }
+                            }
+                            else {
                                 if (s && s.isLoaded()) {
                                     s.setPan(0);
                                     s.play();
@@ -152,14 +166,89 @@ var App = React.createClass({
         });
     },
     stopSound(){
-        RNS.headsetDeviceAvailable((v)=>{
-            if(v) {
+        //RNS.headsetDeviceAvailable((v)=>{
+            //if(v) {
                 if (s && s.isLoaded()) {
                     s.stop();
-                    s.release();
+                }
+            //}
+        //});
+    },
+    log:function(user,state) {
+        //state out-1,in-0
+        if(user){
+            if(History.playingId) {
+                RealmRepo.addLog(user.userId, History.playingId, state, History.lastAccessExTag, ()=> {});
+                //console.log(user.userId,History.playingId,state,History.lastAccessExTag);
+            }
+        }
+    },
+    triggerPlay:function(major,minor) {
+        if (orderState == null) {
+            orderState = {
+                major: major,
+                minor: minor,
+                createTime: new Date().getTime()
+            };
+        }
+        else {
+            if (orderState.major == major && orderState.minor == minor) {
+                var now = new Date().getTime();
+                var duration = now - orderState.createTime;
+                if (duration >= 3000) {
+                    if (History.playingId != major + '-' + minor) {
+                        var audioPath;
+                        let beacon = RealmRepo.getBeaconInfo(major, minor);
+                        if (beacon) {
+                            let content = beacon.triggercontent[0].content;
+                            let title = content ? content['title_' + RealmRepo.Locale().displayLang] : "";
+                            let exMaster = RealmRepo.getExMaster(beacon.extag);
+                            let exTitle = exMaster ? exMaster['title_' + RealmRepo.Locale().displayLang] : null;
+                            let audio = beacon.triggercontent[1];
+                            if (audio) {
+                                let audioContent = audio.content;
+                                if (audioContent) {
+                                    audioPath = RNFS.DocumentDirectoryPath
+                                    + audioContent.clientpath
+                                    + audioContent.filename.replace(".mp3", `_${RealmRepo.Locale().voiceLang}.mp3`);
+                                }
+
+                                this._sendNotification(exTitle ? exTitle + '\r\n' + title : title);
+
+                                if (audioPath && History.phoneCallState == 0) {
+                                    this.stopSound();
+                                    this.playSound(audioPath);
+                                }
+                            }
+                        }
+
+                        //out
+                        let user = RealmRepo.getUser();
+                        this.log(user,1);
+                        //current
+                        History.playingId = major + '-' + minor;
+                        //in
+                        this.log(user,0);
+                    }
                 }
             }
-        });
+            else {
+                orderState = {
+                    major: major,
+                    minor: minor,
+                    createTime: new Date().getTime()
+                };
+            }
+        }
+    },
+    isTargetBeacon(major, minor){
+        var result = false;
+        let exTag = History.lastAccessExTag;
+        let beacon = RealmRepo.getBeaconInfo(major, minor);
+        if (beacon && beacon.extag == exTag) {
+            result = true;
+        }
+        return result;
     },
     componentDidMount(){
         PushNotificationIOS.requestPermissions();
@@ -169,6 +258,42 @@ var App = React.createClass({
 
         this.eventEmitter('on', 'drawerOpenState', (threshold)=> {
             canReceiveSignal = !threshold;
+        });
+
+        this.eventEmitter('on', 'triggerPlay',(orderList)=> {
+            if (orderList) {
+                if (orderList.length > 0) {
+                    this.triggerPlay(orderList[0].major, orderList[0].minor);
+                }
+                else {
+                    //this.stopSound();
+                    let user = RealmRepo.getUser();
+                    //out
+                    this.log(user,1);
+                    //History.playingId = null;
+                }
+            }
+        });
+
+        var subscriptionPhoneCallBegan = DeviceEventEmitter.addListener(
+            'PhoneCallBegan',
+            () => {
+                this.stopSound();
+                History.phoneCallState = 1;
+                //console.log('state=>' + History.phoneCallState);
+            });
+
+        var subscriptionPhoneCallEnd = DeviceEventEmitter.addListener(
+            'PhoneCallEnd',
+            () => {
+                History.phoneCallState = 0;
+                //console.log('state=>' + History.phoneCallState);
+            });
+
+        AppState.addEventListener('change', ()=> {
+            if(AppState.currentState == 'active') {
+                this.eventEmitter('emit', 'detailClose');
+            }
         });
 
         // Listen for beacon changes
@@ -181,7 +306,18 @@ var App = React.createClass({
                     let filterList = _.filter(data.beacons, function (o) {
                         return o.rssi !== 0;
                     });
-                    let orderList = _.orderBy(filterList, ['rssi'], ['desc']);
+                    let sourceList = _.orderBy(filterList, ['rssi'], ['desc']);
+                    var orderList = [];
+                    for(var item of sourceList) {
+                        let major = item.major;
+                        let minor = item.minor;
+                        let findIndex = _.findIndex(orderList, function (o) {
+                            return o.major == major && o.minor == minor;
+                        });
+                        if (findIndex == -1 && this.isTargetBeacon(major,minor)) {
+                            orderList.push(item);
+                        }
+                    }
 
                     //active
                     if (AppState.currentState === 'active') {
@@ -190,6 +326,10 @@ var App = React.createClass({
                         }
                         this.eventEmitter('emit', 'signalReceive', orderList.length > 0);
                     } else {
+                        if(canReceiveSignal) {
+                            this.eventEmitter('emit', 'triggerPlay', orderList);
+                        }
+                        /*
                         //background
                         var title = null;
                         var exTitle = null;
@@ -233,7 +373,9 @@ var App = React.createClass({
                                     let newBeacon = {
                                         state: state,
                                         beaconId: beacon.beaconid,
-                                        extag: beacon.extag
+                                        extag: beacon.extag,
+                                        exTitle: exTitle,
+                                        title: title
                                     };
 
                                     if (state == 1) {
@@ -264,7 +406,7 @@ var App = React.createClass({
                                             RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
                                         }
                                         console.log('open', headState.beaconId);
-                                        this._sendNotification(exTitle ? exTitle + '\r\n' + title : title);
+                                        this._sendNotification(headState.exTitle ? headState.exTitle + '\r\n' + headState.title : headState.title);
                                         this.playSound();
                                         lastBeaconId = headState.beaconId;
                                         History.lastPlayBeaconId = lastBeaconId;
@@ -290,7 +432,7 @@ var App = React.createClass({
                                                     RealmRepo.addLog(user.userId, headState.beaconId, '0', headState.extag, ()=> {});
                                                 }
                                                 console.log('open', headState.beaconId);
-                                                this._sendNotification(exTitle ? exTitle + '\r\n' + title : title);
+                                                this._sendNotification(headState.exTitle ? headState.exTitle + '\r\n' + headState.title : headState.title);
                                                 this.playSound();
                                                 lastBeaconId = headState.beaconId;
                                                 History.lastPlayBeaconId = lastBeaconId;
@@ -319,7 +461,7 @@ var App = React.createClass({
                                 }
 
                             }
-                        }
+                        }*/
                     }
                 }
                 else {
