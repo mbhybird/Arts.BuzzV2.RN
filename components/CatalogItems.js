@@ -159,7 +159,7 @@ var SwiperComp = React.createClass({
                                 backgroundColor: BGWASH,
                                 height:420
                             }}
-                        source={{html: descHtml}}
+                        source={{html: descHtml, baseUrl: item.imageUri.substring(0,item.imageUri.lastIndexOf('/') + 1)}}
                         scrollEnabled={true}
                         onShouldStartLoadWithRequest={this.onShouldStartLoadWithRequest}
                         />

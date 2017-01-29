@@ -160,7 +160,7 @@ var ToolBar = React.createClass({
     mixins:[EventEmitterMixin,TimerMixin],
     getInitialState(){
         return {
-            opacity: 0,
+            opacity: 100,
             exTag: "",
             signalReceive: false,
             versionMatch: true,
@@ -274,10 +274,21 @@ var ToolBar = React.createClass({
                             );
                         }
                     }
+                    else{
+                        //preview the list & content
+                        Actions.preview();
+                        var _beaconList = [];
+                        RealmRepo.getExContent(this.state.exTag).beacons.forEach((item)=> {
+                            _beaconList.push({major: item.major, minor: item.minor, rssi: -60});
+                        });
+                        this.eventEmitter('emit','refreshPreview',{
+                            exTag: this.state.exTag,
+                            beaconList: _beaconList
+                        });
+                    }
                     //RealmRepo.removeAllData();//for debug
                 }}>
-                   <Image source={{uri:"download"}}
-                          style={{width: 50, height: 50, opacity:this.state.opacity}}/>
+                   <Image source={{uri:this.state.opacity == 100 ? "download" : "preview"}} style={{width: 50, height: 50}}/>
                </Button>
            </View>
        );

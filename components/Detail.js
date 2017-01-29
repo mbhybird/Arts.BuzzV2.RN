@@ -318,6 +318,9 @@ var ToolBar = React.createClass({
             else if(this.props.from == 'leftMenuCatalog') {
                 Actions.home();
             }
+            else if(this.props.from == 'preview') {
+                Actions.preview();
+            }
         } catch (ex) {
             console.log(ex);
         }

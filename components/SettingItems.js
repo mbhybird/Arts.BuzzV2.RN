@@ -24,6 +24,23 @@ var SettingItems = React.createClass({
                 params.displayLang, params.voiceLang, params.autoPlay, params.earphonePlay
                 , (res) => {
                     console.log(res);
+                    var voiceOptList;
+                    switch (params.displayLang) {
+                        case 0:
+                            voiceOptList = ['藝術家親自導賞', '粤语', '普通话', 'English', 'Português'];
+                            break;
+                        case 1:
+                            voiceOptList = ['艺术家亲自导赏', '粤语', '普通话', 'English', 'Português'];
+                            break;
+                        case 2:
+                        case 3:
+                            voiceOptList = ['Artist’s Own Guidance', '粤语', '普通话', 'English', 'Português'];
+                            break;
+                    }
+                    if(params.voiceLang) {
+                        this.setState({voiceLang: params.voiceLang});
+                    }
+                    this.setState({checkAudioListOption: voiceOptList[this.state.voiceLang]});
                 });
         });
     },
@@ -32,9 +49,11 @@ var SettingItems = React.createClass({
         RealmRepo.getUserConfig(null, null, (res)=> {
             ref = res;
         });
+        let artistOpt = RealmRepo.getLocaleValue('lbl_system_voice_artist');
         return {
+            voiceLang: ref.user.voiceLang,
             selectedSegment: ['OFF', 'ON'][ref.user.autoPlay],
-            checkAudioListOption: ['粤语', '普通话', 'English', 'Português'][ref.user.voiceLang],
+            checkAudioListOption: [artistOpt, '粤语', '普通话', 'English', 'Português'][ref.user.voiceLang],
             checkDisplayListOption: ['繁體中文', '简体中文', 'English', 'Português'][ref.user.displayLang],
             selectedEarphonePlay:['OFF', 'ON'][ref.user.earphonePlay]
         };
@@ -110,7 +129,9 @@ var SettingItems = React.createClass({
             </View>);
     },
     renderAudioCheckList() {
+        let artistOpt = RealmRepo.getLocaleValue('lbl_system_voice_artist');
         const options = [
+            artistOpt,
             "粤语",
             "普通话",
             "English",
@@ -118,11 +139,13 @@ var SettingItems = React.createClass({
         ];
 
         const values = {
-            "粤语": 0,
-            "普通话": 1,
-            "English": 2,
-            "Português": 3
+            "粤语": 1,
+            "普通话": 2,
+            "English": 3,
+            "Português": 4
         };
+
+        values[artistOpt] = 0;
 
         function setSelectedOption(checkAudioListOption) {
             this.setState({
@@ -135,8 +158,8 @@ var SettingItems = React.createClass({
         function renderOption(option, selected, onSelect, index) {
 
             const textStyle = {
-                paddingTop: 10,
-                paddingBottom: 10,
+                paddingTop: 8,
+                paddingBottom: 8,
                 color: 'black',
                 flex: 1,
                 fontSize: 14

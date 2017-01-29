@@ -31,6 +31,7 @@ var _ = require('lodash');
 var Sound = require('react-native-sound');
 const RNS = NativeModules.RNSound;
 import MyCustView from './MyCustView'
+const DeviceModel = require('react-native-device-info').getModel();
 
 // Create our dataSource which will be displayed in the data list
 var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -72,6 +73,24 @@ var BeaconView = React.createClass({
                         if(locale=='en' || locale=='pt') {
                             fontSize = 16;
                             lineHeight = 20;
+                            if (DeviceModel.indexOf("5") >= 0 || DeviceModel.indexOf("SE") >= 0) {
+                                //iPhone 5/5c/5c/SE
+                                if (title.length > 34) {
+                                    title = title.substring(0, 34) + '...';
+                                }
+                            }
+                            else if (DeviceModel.indexOf("Plus") >= 0) {
+                                //iPhone 6p/6sp/7p
+                                if (title.length > 45) {
+                                    title = title.substring(0, 45) + '...';
+                                }
+                            }
+                            else {
+                                //iPhone 6/6s/7
+                                if (title.length > 40) {
+                                    title = title.substring(0, 40) + '...';
+                                }
+                            }
                         }
 
                         placeHolder = '{' + content.clientpath + content.filename + '}';
@@ -376,12 +395,17 @@ var BeaconList = React.createClass({
         }
     },
     componentWillMount: function() {
+        var frequence = 0;
         this.eventEmitter('on', 'beaconCountChanged', (orderList)=> {
             this.setTimeout(()=> {
+                frequence++;
                 if (orderList) {
-                    this.setState({
-                        dataSource: ds.cloneWithRows(orderList)
-                    });
+                    if (frequence % 3 == 0) {
+                        this.setState({
+                            dataSource: ds.cloneWithRows(orderList)
+                        });
+                        frequence = 0;
+                    }
 
                     if (orderList.length > 0) {
                         this.triggerPlay(orderList[0].major, orderList[0].minor);
@@ -390,14 +414,17 @@ var BeaconList = React.createClass({
                         //this.stopSound();
                         let user = RealmRepo.getUser();
                         //out
-                        this.log(user,1);
+                        this.log(user, 1);
                         //History.playingId = null;
                     }
                 }
                 else {
-                    this.setState({
-                        dataSource: ds.cloneWithRows([])
-                    });
+                    if (frequence % 3 == 0) {
+                        this.setState({
+                            dataSource: ds.cloneWithRows([])
+                        });
+                        frequence = 2;
+                    }
                 }
             }, 500);
         });

@@ -9,6 +9,7 @@ const ZipArchive = require('react-native-zip-archive');
 const TimerMixin = require('react-timer-mixin');
 const FileMgr = require("./FileMgr.js");
 var Screen = Dimensions.get('window');
+const DeviceInfo = require('react-native-device-info');
 
 var Router = React.createClass({
     mixins:[EventEmitterMixin,TimerMixin],
@@ -52,14 +53,25 @@ var Router = React.createClass({
                         .then(() => {
                             console.log('unzip completed!');
                             let deviceLocaleCode = RealmRepo.DeviceLocaleCode;
-                            RealmRepo.getUserConfig(deviceLocaleCode,deviceLocaleCode,(res)=>{
-                                if(res.ok) {
-                                    this.eventEmitter('emit','unzipCatalogCompleted');
-                                    if (res.user.firstTimeLogin == 0) {
-                                        Actions.guide({user:res.user});
+                            let voiceLangCode = 0; //artist
+                            RealmRepo.getUserConfig(deviceLocaleCode, voiceLangCode, (res)=> {
+                                if (res.ok) {
+                                    this.eventEmitter('emit', 'unzipCatalogCompleted');
+                                    let model = DeviceInfo.getModel();
+                                    //iPad
+                                    if (model.indexOf("iPad") >= 0) {
+                                        RealmRepo.updateFirstTimeLogin((resp)=>{
+                                            Actions.home({user:resp.user});
+                                        });
                                     }
-                                    else{
-                                        Actions.home({user:res.user});
+                                    //iPhone
+                                    else {
+                                        if (res.user.firstTimeLogin == 0) {
+                                            Actions.guide({user: res.user});
+                                        }
+                                        else {
+                                            Actions.home({user: res.user});
+                                        }
                                     }
                                 }
                             });
@@ -81,16 +93,27 @@ var Router = React.createClass({
                     zipFileName,
                     'Route');
             }
-            else{
+            else {
                 let deviceLocaleCode = RealmRepo.DeviceLocaleCode;
-                RealmRepo.getUserConfig(deviceLocaleCode,deviceLocaleCode,(res)=>{
-                    if(res.ok) {
-                        this.eventEmitter('emit','unzipCatalogCompleted');
-                        if (res.user.firstTimeLogin == 0) {
-                            Actions.guide({user:res.user});
+                let voiceLangCode = 0; //artist
+                RealmRepo.getUserConfig(deviceLocaleCode, voiceLangCode, (res)=> {
+                    if (res.ok) {
+                        this.eventEmitter('emit', 'unzipCatalogCompleted');
+                        let model = DeviceInfo.getModel();
+                        //iPad
+                        if (model.indexOf("iPad") >= 0) {
+                            RealmRepo.updateFirstTimeLogin((resp)=>{
+                                Actions.home({user:resp.user});
+                            });
                         }
-                        else{
-                            Actions.home({user:res.user});
+                        //iPhone
+                        else {
+                            if (res.user.firstTimeLogin == 0) {
+                                Actions.guide({user: res.user});
+                            }
+                            else {
+                                Actions.home({user: res.user});
+                            }
                         }
                     }
                 });

@@ -29,6 +29,7 @@ var Swipeout = require('react-native-swipeout');
 var ProgressBar = require('react-native-progress-bar');
 const FileMgr = require("./FileMgr.js");
 const ZipArchive = require('react-native-zip-archive');
+import {Actions} from "react-native-router-flux";
 var downloadTotal;
 var downloaded;
 var downloading = false;
@@ -115,6 +116,18 @@ var Downloads = React.createClass({
                 );
             }
         }
+        else{
+            //preview the list & content
+            Actions.preview();
+            var _beaconList = [];
+            RealmRepo.getExContent(rowData.extag).beacons.forEach((item)=> {
+                _beaconList.push({major: item.major, minor: item.minor, rssi: -60});
+            });
+            this.eventEmitter('emit','refreshPreview',{
+                exTag: rowData.extag,
+                beaconList: _beaconList
+            });
+        }
         /*
         else{
             //confirm to delete
@@ -138,7 +151,7 @@ var Downloads = React.createClass({
                     justifyContent:'center',
                     alignItems:'center'
                 }}>
-                    <Image source={{uri:rowData.finished?'dlfinished':'icon_download'}}
+                    <Image source={{uri:rowData.finished?'preview':'icon_download'}}
                            style={{width: 25, height: 25, margin:5}}/>
                     <View style={{flexWrap:'wrap',width:225}}>
                         <Text style={{fontSize:16,fontWeight:'300'}}>{rowData.title}</Text>

@@ -349,15 +349,18 @@ const localeVoiceCodeToSuffix=(code)=> {
     var suffix = "en";
     switch (code) {
         case 0:
-            suffix = "cc";
-            break;
-        case 1:
-            suffix = "sc";
-            break;
-        case 2:
             suffix = "en";
             break;
+        case 1:
+            suffix = "cc";
+            break;
+        case 2:
+            suffix = "sc";
+            break;
         case 3:
+            suffix = "en";
+            break;
+        case 4:
             suffix = "pt";
             break;
     }
@@ -453,6 +456,20 @@ module.exports = ({
             });
         }
 
+        //update audio options
+        let newAudioOptData = realm.objects('Resources').filtered('key="lbl_system_voice_artist"');
+        if(newAudioOptData.length == 0 ) {
+            var newAudioOpt = [];
+            newAudioOpt.push({key: 'lbl_system_voice_artist', locale: 'en', value: 'Artist’s Own Guidance'});
+            newAudioOpt.push({key: 'lbl_system_voice_artist', locale: 'pt', value: 'Artist’s Own Guidance'});
+            newAudioOpt.push({key: 'lbl_system_voice_artist', locale: 'cn', value: '艺术家亲自导赏'});
+            newAudioOpt.push({key: 'lbl_system_voice_artist', locale: 'tw', value: '藝術家親自導賞'});
+            realm.write(() => {
+                newAudioOpt.forEach(function (item) {
+                    realm.create('Resources', item);
+                });
+            });
+        }
     },
     getLocaleValue:(key)=> {
         let Resources = realm.objects('Resources').filtered('key="' + key + '" AND locale="' + getLocale().displayLang + '"');
@@ -630,6 +647,15 @@ module.exports = ({
         var ex = null;
         if (exMaster.length > 0) {
             ex = exMaster[0]
+        }
+
+        return ex;
+    },
+    getExContent:(exTag)=> {
+        let exContent = realm.objects('ExContent').filtered('extag="' + exTag + '"');
+        var ex = null;
+        if (exContent.length > 0) {
+            ex = exContent[0]
         }
 
         return ex;
